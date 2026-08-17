@@ -140,7 +140,7 @@
 <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
 <script>
 (function () {
-  const { Engine, Runner, World, Bodies, Body, Composite, Events } = Matter;
+  const { Engine, Runner, World, Bodies, Body, Composite, Events, Constraint } = Matter;
 
   const canvas = document.getElementById('gameCanvas');
   const ctx = canvas.getContext('2d');
@@ -311,16 +311,37 @@
     Runner.run(runner, engine);
 
     trayWidth = Math.min(width * 0.6, 420);
+    // Dynamic seesaw tray: pinned at its center, tilts under real weight
     tray = Bodies.rectangle(width / 2, height * 0.78, trayWidth, 26, {
-      isStatic: true,
       chamfer: { radius: 6 },
-      label: 'tray'
+      label: 'tray',
+      density: 0.004,
+      friction: 0.9,
+      frictionStatic: 1.2,
+      frictionAir: 0.06,
+      restitution: 0
+    });
+    const pivot = Constraint.create({
+      pointA: { x: width / 2, y: height * 0.78 },
+      bodyB: tray,
+      pointB: { x: 0, y: 0 },
+      stiffness: 1,
+      length: 0
     });
 
     const leftWall = Bodies.rectangle(-20, height / 2, 40, height * 2, { isStatic: true, label: 'wall' });
     const rightWall = Bodies.rectangle(width + 20, height / 2, 40, height * 2, { isStatic: true, label: 'wall' });
 
-    World.add(world, [tray, leftWall, rightWall]);
+    World.add(world, [tray, pivot, leftWall, rightWall]);
+
+    // Spring keeps the tray level until the stack genuinely outweighs it
+    Events.on(engine, 'beforeUpdate', () => {
+      const K = tray.inertia * 9e-6;   // leveling spring strength
+      const MAX = 0.34;                // hard tilt limit (rad)
+      tray.torque += -K * tray.angle;
+      if (tray.angle > MAX) { Body.setAngle(tray, MAX); if (tray.angularVelocity > 0) Body.setAngularVelocity(tray, 0); }
+      if (tray.angle < -MAX) { Body.setAngle(tray, -MAX); if (tray.angularVelocity < 0) Body.setAngularVelocity(tray, 0); }
+    });
 
     Events.on(engine, 'afterUpdate', gameLoop);
     Events.on(engine, 'collisionStart', onCollision);
@@ -448,15 +469,18 @@
   }
 
   function tiltTray(now) {
-    // difficulty ramps: tilt interval shrinks from 6s to 3.2s over ~70s
+    // difficulty ramps: gust interval shrinks from 6s to 3.2s over ~70s
     const interval = Math.max(3200, 6000 - (now - startTime) * 0.04);
     if (now - lastTiltTime < interval) return;
     lastTiltTime = now;
-    const maxAngle = 0.22;
-    const angle = (Math.random() - 0.5) * 2 * maxAngle;
-    Body.setAngle(tray, angle);
-    trayWidth = Math.max(140, trayWidth * 0.92);
-    Body.scale(tray, trayWidth / (tray.bounds.max.x - tray.bounds.min.x), 1);
+    // a gust of wind nudges the seesaw instead of teleporting it
+    const kick = (Math.random() - 0.5) * 0.05;
+    Body.setAngularVelocity(tray, tray.angularVelocity + kick);
+    const newW = Math.max(140, trayWidth * 0.94);
+    if (newW < trayWidth) {
+      Body.scale(tray, newW / trayWidth, 1);
+      trayWidth = newW;
+    }
     shake = Math.min(shake + 4, 10);
     sfx.tilt();
   }
@@ -662,7 +686,7 @@
 
   function drawTray(now) {
     if (!tray) return;
-    const w = tray.bounds.max.x - tray.bounds.min.x;
+    const w = trayWidth;
     ctx.save();
     ctx.translate(tray.position.x, tray.position.y);
     ctx.rotate(tray.angle);
@@ -714,7 +738,7 @@
 
   function nearTrayEdge(b) {
     if (!tray || b.label !== 'piece-settled') return false;
-    const w = tray.bounds.max.x - tray.bounds.min.x;
+    const w = trayWidth;
     const dx = b.position.x - tray.position.x;
     const dy = b.position.y - tray.position.y;
     const cos = Math.cos(tray.angle), sin = Math.sin(tray.angle);
