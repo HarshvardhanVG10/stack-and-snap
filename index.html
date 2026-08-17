@@ -128,7 +128,7 @@
     <div class="mascot" style="background:linear-gradient(180deg,#b39dff,#8c6bf0)"><div class="smile"></div></div>
   </div>
   <h1>Stack &amp; Snap</h1>
-  <p id="overlayText">Help the little Snaplings pile up! Drop them onto the tilting tray, chain quick landings for combos, and watch for rare golden Stars.</p>
+  <p id="overlayText">Milo is balancing a plank on his head &mdash; and Mom is watching nervously! Drop Snaplings onto the plank, keep it balanced, chain quick landings for combos, and watch for rare golden Stars.</p>
   <div id="legend">
     <div><i style="background:#3949ab"></i>Chonk: heavy</div>
     <div><i style="background:#4cd97b;border-radius:50%"></i>Boing: bouncy</div>
@@ -500,7 +500,7 @@
   function checkGameOver() {
     const pieces = Composite.allBodies(world).filter(b => b.label === 'piece-settled' || b.label === 'piece-falling');
     for (const p of pieces) {
-      if (p.position.y > height + 60 || p.position.x < -80 || p.position.x > width + 80) {
+      if (p.position.y > floorY() + 30 || p.position.x < -80 || p.position.x > width + 80) {
         return true;
       }
     }
@@ -578,6 +578,9 @@
       ctx.restore();
     }
 
+    drawFloor();
+    drawMom(now);
+    drawKid(now);
     drawTray(now);
 
     const bodies = Composite.allBodies(world);
@@ -682,6 +685,339 @@
     ctx.beginPath();
     ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  // ---------- Kid & Mom characters ----------
+  const SKIN = '#ffd8b5', SKIN_SHADE = '#f2b98c', HAIR = '#4a2c1a', OUTLINE = '#241335';
+
+  function floorY() { return height * 0.78 + 122; }
+
+  function drawFloor() {
+    const fy = floorY();
+    const g = ctx.createLinearGradient(0, fy, 0, height);
+    g.addColorStop(0, 'rgba(15,5,35,0.45)');
+    g.addColorStop(1, 'rgba(15,5,35,0.7)');
+    ctx.fillStyle = g;
+    ctx.fillRect(-20, fy, width + 40, height - fy + 20);
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-20, fy);
+    ctx.lineTo(width + 20, fy);
+    ctx.stroke();
+  }
+
+  function drawKid(now) {
+    if (!tray) return;
+    const px = width / 2, py = height * 0.78;
+    const t = tray.angle;
+    const at = Math.abs(t);
+    const panic = at > 0.2, worry = at > 0.09;
+    const fy = floorY();
+
+    const headR = 15;
+    const headY = py + 13 + headR - 3;
+    const lean = -t * 26;                    // body sways to counterbalance
+    const wob = panic ? Math.sin(now * 0.03) * 2 : 0;
+    const hipY = headY + headR + 40;
+    const hipX = px + lean * 0.5 + wob;
+
+    ctx.lineCap = 'round';
+
+    // legs (bend more the harder the wobble)
+    ctx.strokeStyle = '#3f51b5';
+    ctx.lineWidth = 9;
+    const stance = 14 + at * 40;
+    for (const dir of [-1, 1]) {
+      const footX = px + dir * stance;
+      const kneeX = (hipX + footX) / 2 + dir * 3;
+      const kneeY = (hipY + fy) / 2 + at * 18;
+      ctx.beginPath();
+      ctx.moveTo(hipX, hipY);
+      ctx.quadraticCurveTo(kneeX, kneeY, footX, fy - 4);
+      ctx.stroke();
+      // shoe
+      ctx.fillStyle = '#8d6e63';
+      ctx.beginPath();
+      ctx.ellipse(footX + dir * 3, fy - 3, 8, 4.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // torso (shirt)
+    ctx.save();
+    ctx.translate(hipX, hipY);
+    ctx.rotate(lean * 0.012);
+    const tw = 30, th = 44;
+    const shirt = ctx.createLinearGradient(0, -th, 0, 0);
+    shirt.addColorStop(0, '#ff8a65');
+    shirt.addColorStop(1, '#f4511e');
+    ctx.fillStyle = shirt;
+    roundRect(-tw / 2, -th, tw, th, 10);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(30,10,50,0.4)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+
+    // arms flail opposite the tilt to counterbalance
+    const shY = headY + headR + 8;
+    const armSpread = 26 + at * 30;
+    ctx.strokeStyle = SKIN;
+    ctx.lineWidth = 7;
+    for (const dir of [-1, 1]) {
+      const raise = dir * t * 90 + (panic ? Math.sin(now * 0.025 + dir) * 10 : 0);
+      const hx = px + lean * 0.6 + dir * armSpread;
+      const hy = shY - 14 - raise * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(px + lean * 0.55 + dir * 12, shY);
+      ctx.quadraticCurveTo(px + lean * 0.55 + dir * (armSpread * 0.7), shY - 4, hx, hy);
+      ctx.stroke();
+      // hand
+      ctx.fillStyle = SKIN;
+      ctx.beginPath();
+      ctx.arc(hx, hy, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // head (balancing the plank!)
+    const hx2 = px + lean * 0.25;
+    ctx.fillStyle = SKIN;
+    ctx.strokeStyle = 'rgba(30,10,50,0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(hx2, headY, headR, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    // hair: flat top (squished by the plank)
+    ctx.fillStyle = HAIR;
+    ctx.beginPath();
+    ctx.arc(hx2, headY, headR, Math.PI * 1.05, Math.PI * 1.95);
+    ctx.lineTo(hx2 + headR * 0.6, headY - headR * 0.55);
+    ctx.closePath();
+    ctx.fill();
+    // ears
+    for (const dir of [-1, 1]) {
+      ctx.fillStyle = SKIN_SHADE;
+      ctx.beginPath();
+      ctx.arc(hx2 + dir * headR, headY + 2, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // face: calm -> focused -> panic
+    const lookDir = Math.max(-1, Math.min(1, t * 6));
+    ctx.fillStyle = OUTLINE;
+    for (const dir of [-1, 1]) {
+      const ex = hx2 + dir * 5.5 + lookDir * 2;
+      if (panic) {
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(ex, headY + 1, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = OUTLINE;
+        ctx.beginPath(); ctx.arc(ex + lookDir, headY + 1.6, 2, 0, Math.PI * 2); ctx.fill();
+      } else if (worry) {
+        // concentrating: half-closed determined eyes
+        ctx.strokeStyle = OUTLINE;
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(ex - 3, headY + 1);
+        ctx.lineTo(ex + 3, headY + 0);
+        ctx.stroke();
+      } else {
+        ctx.beginPath(); ctx.ellipse(ex, headY + 1, 2, 3, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // blush
+    ctx.fillStyle = 'rgba(255,90,110,0.35)';
+    for (const dir of [-1, 1]) {
+      ctx.beginPath();
+      ctx.ellipse(hx2 + dir * 9.5, headY + 6.5, 2.8, 1.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // mouth
+    ctx.strokeStyle = OUTLINE;
+    ctx.fillStyle = OUTLINE;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    if (panic) {
+      ctx.ellipse(hx2, headY + 8.5, 3, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (worry) {
+      // gritted concentration + tongue out
+      ctx.moveTo(hx2 - 4, headY + 8.5);
+      ctx.lineTo(hx2 + 4, headY + 8.5);
+      ctx.stroke();
+      ctx.fillStyle = '#ff5a76';
+      ctx.beginPath();
+      ctx.ellipse(hx2 + 3, headY + 10.5, 2.2, 2.8, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.arc(hx2, headY + 6.5, 4, 0.2 * Math.PI, 0.8 * Math.PI);
+      ctx.stroke();
+    }
+    // sweat when panicking
+    if (panic) {
+      const wobS = Math.sin(now * 0.01) * 1.5;
+      ctx.fillStyle = 'rgba(120,200,255,0.9)';
+      ctx.beginPath();
+      const sx = hx2 + headR + 3, sy = headY - 6 + wobS;
+      ctx.moveTo(sx, sy - 4);
+      ctx.quadraticCurveTo(sx + 4, sy + 2, sx, sy + 5);
+      ctx.quadraticCurveTo(sx - 4, sy + 2, sx, sy - 4);
+      ctx.fill();
+    }
+  }
+
+  function drawMom(now) {
+    if (!tray) return;
+    const t = Math.abs(tray.angle);
+    const panic = t > 0.2, worry = t > 0.09;
+    const fy = floorY();
+    const mx = Math.max(58, width / 2 - Math.min(width * 0.34, 185));
+    const bob = Math.sin(now * 0.0028) * 2 + (panic ? Math.sin(now * 0.02) * 2 : 0);
+    const bodyW = 62, bodyH = 74;
+    const byBot = fy;
+    const byTop = byBot - bodyH + bob;
+
+    // dress (round motherly figure)
+    const dress = ctx.createLinearGradient(0, byTop, 0, byBot);
+    dress.addColorStop(0, '#ec6a9c');
+    dress.addColorStop(1, '#c2185b');
+    ctx.fillStyle = dress;
+    ctx.strokeStyle = 'rgba(30,10,50,0.4)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(mx, byTop + 14);
+    ctx.quadraticCurveTo(mx - bodyW * 0.72, byTop + bodyH * 0.4, mx - bodyW * 0.52, byBot);
+    ctx.lineTo(mx + bodyW * 0.52, byBot);
+    ctx.quadraticCurveTo(mx + bodyW * 0.72, byTop + bodyH * 0.4, mx, byTop + 14);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    // apron
+    ctx.fillStyle = 'rgba(255,245,230,0.85)';
+    ctx.beginPath();
+    ctx.moveTo(mx - 14, byTop + 30);
+    ctx.quadraticCurveTo(mx, byTop + 26, mx + 14, byTop + 30);
+    ctx.quadraticCurveTo(mx + 16, byBot - 6, mx, byBot - 4);
+    ctx.quadraticCurveTo(mx - 16, byBot - 6, mx - 14, byTop + 30);
+    ctx.fill();
+
+    // head
+    const hR = 13;
+    const hy = byTop + 4;
+    ctx.fillStyle = SKIN;
+    ctx.strokeStyle = 'rgba(30,10,50,0.4)';
+    ctx.beginPath();
+    ctx.arc(mx, hy, hR, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+    // hair + bun
+    ctx.fillStyle = '#33251c';
+    ctx.beginPath();
+    ctx.arc(mx, hy, hR, Math.PI * 0.95, Math.PI * 2.05);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(mx, hy - hR - 3, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // hands: clasped when calm, on cheeks when worried, waving when panic
+    ctx.fillStyle = SKIN;
+    if (panic) {
+      const wave = Math.sin(now * 0.02) * 6;
+      for (const dir of [-1, 1]) {
+        ctx.strokeStyle = '#c2185b';
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.moveTo(mx + dir * 20, byTop + 30);
+        ctx.quadraticCurveTo(mx + dir * 34, byTop + 12, mx + dir * 30, hy - 8 - wave * dir);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(mx + dir * 30, hy - 8 - wave * dir, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (worry) {
+      for (const dir of [-1, 1]) {
+        ctx.strokeStyle = '#c2185b';
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.moveTo(mx + dir * 20, byTop + 32);
+        ctx.quadraticCurveTo(mx + dir * 26, byTop + 16, mx + dir * hR, hy + 4);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(mx + dir * hR, hy + 4, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else {
+      ctx.strokeStyle = '#c2185b';
+      ctx.lineWidth = 7;
+      for (const dir of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(mx + dir * 20, byTop + 32);
+        ctx.quadraticCurveTo(mx + dir * 14, byTop + 44, mx + dir * 4, byTop + 48);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.arc(mx - 3, byTop + 49, 4.5, 0, Math.PI * 2);
+      ctx.arc(mx + 3, byTop + 49, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // face
+    ctx.fillStyle = OUTLINE;
+    const kidDir = 1; // kid is to her right
+    for (const dir of [-1, 1]) {
+      const ex = mx + dir * 4.5 + kidDir * 1.5;
+      if (panic) {
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(ex, hy + 1, 3.4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = OUTLINE;
+        ctx.beginPath(); ctx.arc(ex + 1, hy + 1.4, 1.7, 0, Math.PI * 2); ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.ellipse(ex, hy + 1, 1.7, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // worried brows
+    if (worry || panic) {
+      ctx.strokeStyle = OUTLINE;
+      ctx.lineWidth = 1.8;
+      for (const dir of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(mx + dir * 7, hy - 4.5);
+        ctx.lineTo(mx + dir * 2.5, hy - 6.5);
+        ctx.stroke();
+      }
+    }
+    // mouth
+    ctx.strokeStyle = OUTLINE;
+    ctx.fillStyle = OUTLINE;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    if (panic) {
+      ctx.ellipse(mx, hy + 7, 2.6, 3.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (worry) {
+      ctx.moveTo(mx - 4, hy + 8);
+      ctx.quadraticCurveTo(mx, hy + 5.5, mx + 4, hy + 8);
+      ctx.stroke();
+    } else {
+      ctx.arc(mx, hy + 5.5, 3.4, 0.2 * Math.PI, 0.8 * Math.PI);
+      ctx.stroke();
+    }
+    // "!" alarm bubble when panicking
+    if (panic) {
+      const pulse = 1 + Math.sin(now * 0.015) * 0.1;
+      ctx.save();
+      ctx.translate(mx + 24, hy - 26);
+      ctx.scale(pulse, pulse);
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(0, 0, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#e53935';
+      ctx.font = '900 16px -apple-system, "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('!', 0, 1);
+      ctx.restore();
+      ctx.textBaseline = 'alphabetic';
+    }
   }
 
   function drawTray(now) {
