@@ -213,16 +213,15 @@
   }
 
   function computeScore() {
-    const pieces = Composite.allBodies(world).filter(b => b.label.indexOf('piece') === 0 || b.label === 'piece-settled');
-    if (pieces.length === 0) return 0;
+    const settled = Composite.allBodies(world).filter(b => b.label === 'piece-settled');
+    if (settled.length === 0) return 0;
     const trayTopY = tray.position.y;
     let maxHeight = 0;
-    for (const p of pieces) {
+    for (const p of settled) {
       const h = trayTopY - p.position.y;
       if (h > maxHeight) maxHeight = h;
     }
-    const settledCount = pieces.filter(p => p.label === 'piece-settled').length;
-    return Math.max(0, Math.round(maxHeight / 3) + settledCount * 5);
+    return Math.max(0, Math.round(maxHeight / 3) + settled.length * 5);
   }
 
   function checkGameOver() {
