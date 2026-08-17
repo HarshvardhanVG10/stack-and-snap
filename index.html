@@ -130,10 +130,10 @@
     <div class="mascot" style="background:linear-gradient(180deg,#b39dff,#8c6bf0)"><div class="smile"></div></div>
   </div>
   <h1>Stack &amp; Snap</h1>
-  <p id="overlayText">Milo is balancing a plank on his head &mdash; and Mom is watching nervously! Drop Snaplings onto the plank, keep it balanced, chain quick landings for combos, and watch for rare golden Stars.</p>
+  <p id="overlayText">Milo is balancing a plank on his head &mdash; and Mom is watching nervously! Drop toys and treats onto his plank, keep it balanced, chain quick landings for combos, and watch for rare golden Stars.</p>
   <div id="legend">
-    <div><i style="background:#3949ab"></i>Chonk: heavy</div>
-    <div><i style="background:#4cd97b;border-radius:50%"></i>Boing: bouncy</div>
+    <div><i style="background:#8d6e63"></i>Teddy: heavy</div>
+    <div><i style="background:#a0522d;border-radius:50%"></i>Ball: bouncy</div>
     <div><i style="background:#ffb300;border-radius:50%"></i>Star: +25</div>
   </div>
   <button class="playBtn" id="playBtn">Play</button>
@@ -208,29 +208,33 @@
     over() { [400, 300, 200, 130].forEach((f, i) => tone(f, 0.3, 'triangle', 0.1, i * 0.16)); }
   };
 
-  // ---------- Characters ----------
-  const SKINS = [
-    ['#ff8a80', '#ff5252'],
-    ['#ffd166', '#ffb020'],
-    ['#82e9de', '#26c6a2'],
-    ['#8ecdf7', '#3f9ff0'],
-    ['#b39dff', '#8c6bf0'],
-    ['#ffb0d8', '#ff70b8']
+  // ---------- Props (player-generated art) ----------
+  const PROPS = [
+    { img: 'prop_apple',    kind: 'normal', w: 54, shape: 'circle' },
+    { img: 'prop_orange',   kind: 'normal', w: 54, shape: 'circle' },
+    { img: 'prop_book',     kind: 'normal', w: 64, shape: 'rect' },
+    { img: 'prop_car',      kind: 'normal', w: 68, shape: 'rect' },
+    { img: 'prop_duck',     kind: 'normal', w: 56, shape: 'rect' },
+    { img: 'prop_cake',     kind: 'normal', w: 62, shape: 'rect' },
+    { img: 'prop_clock',    kind: 'normal', w: 54, shape: 'circle' },
+    { img: 'prop_shoe',     kind: 'pip',    w: 46, shape: 'rect' },
+    { img: 'prop_slipper',  kind: 'pip',    w: 44, shape: 'rect' },
+    { img: 'prop_teddy',    kind: 'chonk',  w: 82, shape: 'rect' },
+    { img: 'prop_football', kind: 'boing',  w: 56, shape: 'circle' },
+    { img: 'prop_star',     kind: 'star',   w: 54, shape: 'circle' }
   ];
-  const SHAPES = ['box', 'circle', 'triangle'];
 
   function makeSpec() {
     const roll = Math.random();
-    if (roll < 0.05) {
-      return { kind: 'star', type: 'circle', skin: ['#ffe082', '#ffb300'], size: 30 };
-    } else if (roll < 0.15) {
-      return { kind: 'chonk', type: 'box', skin: ['#7986cb', '#3949ab'], size: 46 + Math.random() * 8 };
-    } else if (roll < 0.25) {
-      return { kind: 'boing', type: 'circle', skin: ['#8effa9', '#2ecc71'], size: 28 + Math.random() * 8 };
-    } else if (roll < 0.35) {
-      return { kind: 'pip', type: SHAPES[Math.floor(Math.random() * 2)], skin: SKINS[Math.floor(Math.random() * SKINS.length)], size: 17 + Math.random() * 6 };
+    if (roll < 0.05) return PROPS.find(p => p.kind === 'star');
+    if (roll < 0.15) return PROPS.find(p => p.kind === 'chonk');
+    if (roll < 0.25) return PROPS.find(p => p.kind === 'boing');
+    if (roll < 0.38) {
+      const pips = PROPS.filter(p => p.kind === 'pip');
+      return pips[Math.floor(Math.random() * pips.length)];
     }
-    return { kind: 'normal', type: SHAPES[Math.floor(Math.random() * SHAPES.length)], skin: SKINS[Math.floor(Math.random() * SKINS.length)], size: 26 + Math.random() * 20 };
+    const normals = PROPS.filter(p => p.kind === 'normal');
+    return normals[Math.floor(Math.random() * normals.length)];
   }
 
   function bodyFromSpec(spec, x, y) {
@@ -240,22 +244,17 @@
       frictionStatic: 1.2,
       density: spec.kind === 'chonk' ? 0.005 : 0.002
     };
+    const im = IMG[spec.img];
+    const ratio = (im && im.naturalWidth) ? im.naturalHeight / im.naturalWidth : 0.72;
+    const dw = spec.w, dh = dw * ratio;
     let body;
-    if (spec.type === 'circle') {
-      body = Bodies.circle(x, y, spec.size / 1.7, options);
-    } else if (spec.type === 'triangle') {
-      body = Bodies.polygon(x, y, 3, spec.size / 1.4, options);
+    if (spec.shape === 'circle') {
+      body = Bodies.circle(x, y, dw * 0.30, options);
     } else {
-      body = Bodies.rectangle(x, y, spec.size * 1.3, spec.size * 1.3, options);
+      body = Bodies.rectangle(x, y, dw * 0.60, dh * 0.80, options);
     }
     body.label = 'piece';
-    body.snap = {
-      skin: spec.skin, type: spec.type, size: spec.size, kind: spec.kind,
-      blinkAt: performance.now() + 1200 + Math.random() * 3200,
-      blinkUntil: 0,
-      landed: false,
-      squash: 0
-    };
+    body.snap = { prop: spec, kind: spec.kind, size: dw * 0.5, landed: false, squash: 0 };
     return body;
   }
 
@@ -335,7 +334,7 @@
 
     trayWidth = Math.min(width * 0.6, 420);
     // Dynamic seesaw tray: pinned at its center, tilts under real weight
-    tray = Bodies.rectangle(width / 2, height * 0.78, trayWidth, 26, {
+    tray = Bodies.rectangle(width / 2, height * 0.70, trayWidth, 26, {
       chamfer: { radius: 6 },
       label: 'tray',
       density: 0.004,
@@ -345,7 +344,7 @@
       restitution: 0
     });
     const pivot = Constraint.create({
-      pointA: { x: width / 2, y: height * 0.78 },
+      pointA: { x: width / 2, y: height * 0.70 },
       bodyB: tray,
       pointB: { x: 0, y: 0 },
       stiffness: 1,
@@ -420,7 +419,7 @@
         const now = performance.now();
         const impact = Math.min(Math.abs(b.velocity.y), 14);
         shake = Math.min(shake + impact * 0.7, 10);
-        burst(b.position.x, b.position.y + b.snap.size * 0.4, b.snap.skin[1], 6 + impact);
+        burst(b.position.x, b.position.y + b.snap.size * 0.4, '#e0b070', 6 + impact);
         sfx.land(impact);
 
         // combo chain
@@ -583,25 +582,26 @@
     const now = performance.now();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const bg = ctx.createLinearGradient(0, 0, 0, height);
-    bg.addColorStop(0, '#170a33');
-    bg.addColorStop(0.55, '#33195a');
-    bg.addColorStop(1, '#5e2a66');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, width, height);
-
-    drawGlow(width * 0.82, height * 0.16, 90, 'rgba(255,190,120,0.10)');
-    drawGlow(width * 0.14, height * 0.55, 130, 'rgba(140,110,255,0.10)');
-
-    for (const s of stars) {
-      const a = 0.25 + 0.55 * Math.abs(Math.sin(s.tw + now * 0.001 * s.sp));
-      ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(2) + ')';
-      ctx.beginPath();
-      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      ctx.fill();
+    if (IMG.bg && IMG.bg.complete && IMG.bg.naturalWidth) {
+      const iw = IMG.bg.naturalWidth, ih = IMG.bg.naturalHeight;
+      const s = Math.max(width / iw, height / ih);
+      const dw = iw * s, dh = ih * s;
+      ctx.drawImage(IMG.bg, (width - dw) / 2, (height - dh) / 2, dw, dh);
+      // dark gradient behind HUD for readability
+      const top = ctx.createLinearGradient(0, 0, 0, 140);
+      top.addColorStop(0, 'rgba(20,9,43,0.55)');
+      top.addColorStop(1, 'rgba(20,9,43,0)');
+      ctx.fillStyle = top;
+      ctx.fillRect(0, 0, width, 140);
+    } else {
+      const bg = ctx.createLinearGradient(0, 0, 0, height);
+      bg.addColorStop(0, '#170a33');
+      bg.addColorStop(1, '#5e2a66');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, width, height);
     }
 
-    if (!world) { drawNextPreview(now); return; }
+        if (!world) { drawNextPreview(now); return; }
 
     if (shake > 0.1) {
       ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
@@ -626,10 +626,9 @@
     drawTray(now);
 
     const bodies = Composite.allBodies(world);
-    const tilted = Math.abs(tray ? tray.angle : 0) > 0.12;
     for (const b of bodies) {
       if (!b.snap) continue;
-      drawSnapling(b, now, tilted);
+      drawProp(b, now);
     }
 
     for (let i = particles.length - 1; i >= 0; i--) {
@@ -717,52 +716,20 @@
 
   function drawNextPreview(now) {
     if (!running || !nextSpec) return;
+    const im = IMG[nextSpec.img];
     const px = width - 41, py = 118;
     ctx.save();
-    ctx.fillStyle = 'rgba(255,255,255,0.08)';
-    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
     ctx.lineWidth = 2;
-    roundRect(px - 21, py - 21, 42, 42, 12);
+    roundRect(px - 22, py - 22, 44, 44, 12);
     ctx.fill(); ctx.stroke();
-
-    ctx.translate(px, py);
-    const sc = 22 / nextSpec.size;
-    ctx.scale(sc, sc);
-    const grad = ctx.createLinearGradient(0, -nextSpec.size, 0, nextSpec.size);
-    grad.addColorStop(0, nextSpec.skin[0]);
-    grad.addColorStop(1, nextSpec.skin[1]);
-    ctx.fillStyle = grad;
-    ctx.strokeStyle = 'rgba(30,10,50,0.5)';
-    ctx.lineWidth = 2.5 / sc * 0.6;
-    if (nextSpec.type === 'circle') {
-      ctx.beginPath();
-      ctx.arc(0, 0, nextSpec.size / 1.7, 0, Math.PI * 2);
-      ctx.fill(); ctx.stroke();
-    } else if (nextSpec.type === 'triangle') {
-      const r = nextSpec.size / 1.4;
-      ctx.beginPath();
-      for (let i = 0; i < 3; i++) {
-        const a = -Math.PI / 2 + i * (Math.PI * 2 / 3);
-        i === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
-      }
-      ctx.closePath();
-      ctx.fill(); ctx.stroke();
-    } else {
-      const half = nextSpec.size * 1.3 / 2;
-      roundRect(-half, -half, half * 2, half * 2, 8);
-      ctx.fill(); ctx.stroke();
+    if (im && im.complete && im.naturalWidth) {
+      const r = im.naturalHeight / im.naturalWidth;
+      let dw = 34, dh = dw * r;
+      if (dh > 34) { dh = 34; dw = dh / r; }
+      ctx.drawImage(im, px - dw / 2, py - dh / 2, dw, dh);
     }
-    // simple preview face
-    ctx.fillStyle = '#241335';
-    const es = nextSpec.size / 36;
-    ctx.beginPath(); ctx.ellipse(-7 * es, -2 * es, 3 * es, 4 * es, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(7 * es, -2 * es, 3 * es, 4 * es, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#241335';
-    ctx.lineWidth = 2 * es;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.arc(0, 5 * es, 4.5 * es, 0.25 * Math.PI, 0.75 * Math.PI);
-    ctx.stroke();
     ctx.restore();
   }
 
@@ -776,12 +743,13 @@
     ctx.fill();
   }
 
-  // ---------- Kid & Mom characters (Kenney Toon Characters sprites, CC0) ----------
+  // ---------- Art (player-generated, processed) ----------
   const OUTLINE = '#241335';
   const IMG = {};
   let imgCount = 0, imgLoaded = 0;
-  ['kid_head', 'kid_headFocus', 'kid_headShock', 'kid_body', 'kid_arm', 'kid_leg',
-   'mom_head', 'mom_headFocus', 'mom_headShock', 'mom_body', 'mom_arm', 'mom_leg'].forEach(name => {
+  ['bg', 'kid_calm', 'kid_worried', 'kid_panic', 'mom',
+   'prop_apple', 'prop_orange', 'prop_book', 'prop_car', 'prop_duck', 'prop_cake',
+   'prop_clock', 'prop_shoe', 'prop_slipper', 'prop_teddy', 'prop_football', 'prop_star'].forEach(name => {
     imgCount++;
     const im = new Image();
     im.onload = () => imgLoaded++;
@@ -790,114 +758,25 @@
   });
   function imgReady() { return imgLoaded === imgCount; }
 
-  function floorY() { return height * 0.78 + 122; }
+  const KID_RATIO = 590 / 460;   // kid sprite aspect (h/w)
+  function kidW() { return Math.min(200, width * 0.48, (height * 0.29 - 14) / KID_RATIO); }
+  function floorY() { return height * 0.70 + 6 + kidW() * KID_RATIO; }
 
-  function drawFloor() {
-    const fy = floorY();
-    const g = ctx.createLinearGradient(0, fy, 0, height);
-    g.addColorStop(0, 'rgba(15,5,35,0.45)');
-    g.addColorStop(1, 'rgba(15,5,35,0.7)');
-    ctx.fillStyle = g;
-    ctx.fillRect(-20, fy, width + 40, height - fy + 20);
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-20, fy);
-    ctx.lineTo(width + 20, fy);
-    ctx.stroke();
-  }
+  function drawFloor() { /* floor is part of the background art */ }
 
   function drawKid(now) {
     if (!tray || !imgReady()) return;
-    const px = width / 2, py = height * 0.78;
-    const t = tray.angle;
-    const at = Math.abs(t);
-    const panic = at > 0.2, worry = at > 0.09;
-    const fy = floorY();
-    const plankBot = py + 12;
-
-    // kid proportions: big head, short body & legs
-    const headImg = panic ? IMG.kid_headShock : (worry ? IMG.kid_headFocus : IMG.kid_head);
-    const HW = 56, HH = HW * headImg.height / headImg.width;      // ~60
-    const BW = 42, BH = BW * IMG.kid_body.height / IMG.kid_body.width * 0.82; // ~36
-    const lean = -t * 30;                                          // sway to counterbalance
-    const wob = panic ? Math.sin(now * 0.03) * 2 : 0;
-
-    const headX = px;                       // head stays under the plank pivot
-    const headTop = plankBot - 4;
-    const bodyX = px + lean * 0.55 + wob;
-    const bodyTop = headTop + HH - 10;
-    const bodyBot = bodyTop + BH;
-
-    // legs: stretch to the floor, spread wider as it gets scary
-    const stance = 12 + at * 55;
-    const legH = Math.max(20, fy - bodyBot + 4);
-    const LW = 17;
-    for (const dir of [-1, 1]) {
-      ctx.save();
-      ctx.translate(px + dir * stance, fy);
-      if (dir === -1) ctx.scale(-1, 1);
-      ctx.drawImage(IMG.kid_leg, -LW / 2, -legH, LW, legH);
-      ctx.restore();
-    }
-
-    // arms: rotate from the shoulders, flailing opposite the tilt
-    const shY = bodyTop + 8;
-    const AW = 24, AH = AW * IMG.kid_arm.height / IMG.kid_arm.width;
-    for (const dir of [-1, 1]) {
-      const flail = dir * t * 3.2 + (panic ? Math.sin(now * 0.025 + dir) * 0.35 : 0);
-      ctx.save();
-      ctx.translate(bodyX + dir * (BW / 2 - 4), shY);
-      ctx.scale(dir, 1);                 // mirror for the left arm
-      ctx.rotate(-1.9 + flail * dir);    // raised outward for balance
-      ctx.drawImage(IMG.kid_arm, -4, -6, AW, AH);
-      ctx.restore();
-    }
-
-    // body
+    const t = tray.angle, at = Math.abs(t);
+    const im = at > 0.2 ? IMG.kid_panic : (at > 0.09 ? IMG.kid_worried : IMG.kid_calm);
+    const px = width / 2, py = height * 0.70;
+    const dw = kidW();
+    const dh = dw * im.naturalHeight / im.naturalWidth;
+    const lean = -t * 18;
+    const wob = at > 0.2 ? Math.sin(now * 0.03) * 2 : 0;
     ctx.save();
-    ctx.translate(bodyX, bodyTop);
-    ctx.rotate(lean * 0.012);
-    ctx.drawImage(IMG.kid_body, -BW / 2, 0, BW, BH);
-    ctx.restore();
-
-    // head last (on top), balancing the plank
-    ctx.save();
-    ctx.translate(headX + lean * 0.2, headTop);
-    ctx.rotate(t * 0.35);                // head tilts subtly with the plank
-    ctx.drawImage(headImg, -HW / 2, 0, HW, HH);
-
-    // expression detailing overlays
-    if (worry && !panic) {
-      // effort blush
-      ctx.fillStyle = 'rgba(255,90,110,0.30)';
-      for (const dir of [-1, 1]) {
-        ctx.beginPath();
-        ctx.ellipse(dir * HW * 0.28, HH * 0.62, 5, 3, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    if (panic) {
-      // sweat drops flying off
-      ctx.fillStyle = 'rgba(120,200,255,0.9)';
-      for (const dir of [-1, 1]) {
-        const ph = (now * 0.006 + (dir + 1)) % 1;
-        const sx = dir * (HW * 0.5 + 4 + ph * 10);
-        const sy = HH * 0.25 - ph * 14;
-        ctx.globalAlpha = 1 - ph;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy - 4);
-        ctx.quadraticCurveTo(sx + 3.5, sy + 1.5, sx, sy + 4.5);
-        ctx.quadraticCurveTo(sx - 3.5, sy + 1.5, sx, sy - 4);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-      // "!!" burst above head
-      ctx.fillStyle = '#ffd54f';
-      ctx.font = '900 17px -apple-system, "Segoe UI", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('!!', HW * 0.45, -4);
-    }
+    ctx.translate(px + lean * 0.3 + wob, py + 6);
+    ctx.rotate(t * 0.05);
+    ctx.drawImage(im, -dw / 2, 0, dw, dh);
     ctx.restore();
   }
 
@@ -906,65 +785,19 @@
     const t = Math.abs(tray.angle);
     const panic = t > 0.2, worry = t > 0.09;
     const fy = floorY();
-    const mx = Math.max(58, width / 2 - Math.min(width * 0.34, 185));
+    const dw = Math.min(118, width * 0.28);
+    const dh = dw * IMG.mom.naturalHeight / IMG.mom.naturalWidth;
+    const mx = Math.max(14 + dw / 2, width / 2 - Math.min(width * 0.36, 200));
     const bob = Math.sin(now * 0.0028) * 2 + (panic ? Math.sin(now * 0.02) * 2 : 0);
+    const top = fy - dh + bob;
 
-    // adult proportions: smaller head, taller body
-    const headImg = panic ? IMG.mom_headShock : (worry ? IMG.mom_headFocus : IMG.mom_head);
-    const HW = 42, HH = HW * headImg.height / headImg.width;      // ~33
-    const BW = 48, BH = BW * IMG.mom_body.height / IMG.mom_body.width; // ~57
-    const legH = 26, LW = 16;
-
-    const bodyBot = fy;
-    const bodyTop = bodyBot - legH - BH + bob;
-    const headTop = bodyTop - HH + 8;
-
-    // legs
-    for (const dir of [-1, 1]) {
-      ctx.save();
-      ctx.translate(mx + dir * 10, fy);
-      if (dir === -1) ctx.scale(-1, 1);
-      ctx.drawImage(IMG.mom_leg, -LW / 2, -legH, LW, legH);
-      ctx.restore();
-    }
-
-    // arms: relaxed down when calm, up to her face when worried, waving in panic
-    const AW = 22, AH = AW * IMG.mom_arm.height / IMG.mom_arm.width;
-    const shY = bodyTop + 10;
-    for (const dir of [-1, 1]) {
-      let rot;
-      if (panic) rot = -2.4 + Math.sin(now * 0.02 + dir) * 0.5;   // waving overhead
-      else if (worry) rot = -2.6;                                  // hands to cheeks
-      else rot = -0.5;                                             // relaxed at sides
-      ctx.save();
-      ctx.translate(mx + dir * (BW / 2 - 5), shY);
-      ctx.scale(dir, 1);
-      ctx.rotate(rot);
-      ctx.drawImage(IMG.mom_arm, -4, -6, AW, AH);
-      ctx.restore();
-    }
-
-    // body
-    ctx.drawImage(IMG.mom_body, mx - BW / 2, bodyTop, BW, BH);
-
-    // head
     ctx.save();
-    ctx.translate(mx, headTop);
-    const leanToKid = worry ? 0.08 : 0.02;                         // leans toward the kid
-    ctx.rotate(leanToKid);
-    ctx.drawImage(headImg, -HW / 2, 0, HW, HH);
-    if (panic) {
-      // sweat drop
-      const wobS = Math.sin(now * 0.01) * 1.5;
-      ctx.fillStyle = 'rgba(120,200,255,0.9)';
-      ctx.beginPath();
-      const sx = HW * 0.5 + 3, sy = HH * 0.2 + wobS;
-      ctx.moveTo(sx, sy - 4);
-      ctx.quadraticCurveTo(sx + 4, sy + 2, sx, sy + 5);
-      ctx.quadraticCurveTo(sx - 4, sy + 2, sx, sy - 4);
-      ctx.fill();
-    }
+    ctx.translate(mx, top + dh);
+    if (panic) ctx.rotate(Math.sin(now * 0.02) * 0.03);
+    ctx.drawImage(IMG.mom, -dw / 2, -dh, dw, dh);
     ctx.restore();
+
+    const headTop = top + 8;
 
     // speech bubble (takes priority over the "!" icon)
     if (now < momUntil && momText) {
@@ -974,14 +807,12 @@
       const bw = tw + 22, bh = 28;
       let bx = mx - bw / 2 + 30;
       bx = Math.max(8, Math.min(width - bw - 8, bx));
-      const by = headTop - bh - 18;
-      // bubble body
+      const by = headTop - bh - 14;
       ctx.fillStyle = 'rgba(255,255,255,0.96)';
       ctx.strokeStyle = 'rgba(30,10,50,0.25)';
       ctx.lineWidth = 2;
       roundRect(bx, by, bw, bh, 12);
       ctx.fill(); ctx.stroke();
-      // tail
       ctx.fillStyle = 'rgba(255,255,255,0.96)';
       ctx.beginPath();
       ctx.moveTo(mx + 8, by + bh - 2);
@@ -989,7 +820,6 @@
       ctx.lineTo(mx + 18, by + bh - 2);
       ctx.closePath();
       ctx.fill();
-      // text
       const scary = momText === momText.toUpperCase() && /[A-Z]/.test(momText);
       ctx.fillStyle = scary ? '#e53935' : '#3b1a55';
       ctx.textAlign = 'center';
@@ -998,7 +828,7 @@
     } else if (panic) {
       const pulse = 1 + Math.sin(now * 0.015) * 0.1;
       ctx.save();
-      ctx.translate(mx + 26, headTop - 14);
+      ctx.translate(mx + dw / 2 + 6, headTop - 6);
       ctx.scale(pulse, pulse);
       ctx.fillStyle = '#fff';
       ctx.beginPath();
@@ -1012,13 +842,12 @@
       ctx.restore();
       ctx.textBaseline = 'alphabetic';
     } else if (worry) {
-      // "..." thought dots
-      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
       for (let i = 0; i < 3; i++) {
         const ph = Math.sin(now * 0.005 + i * 0.9) * 0.5 + 0.5;
         ctx.globalAlpha = 0.3 + ph * 0.6;
         ctx.beginPath();
-        ctx.arc(mx + 20 + i * 8, headTop - 10 - i * 3, 2.4, 0, Math.PI * 2);
+        ctx.arc(mx + dw / 2 + i * 8, headTop - 4 - i * 3, 2.4, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.globalAlpha = 1;
@@ -1077,75 +906,6 @@
     ctx.closePath();
   }
 
-  function nearTrayEdge(b) {
-    if (!tray || b.label !== 'piece-settled') return false;
-    const w = trayWidth;
-    const dx = b.position.x - tray.position.x;
-    const dy = b.position.y - tray.position.y;
-    const cos = Math.cos(tray.angle), sin = Math.sin(tray.angle);
-    const proj = dx * cos + dy * sin;
-    return Math.abs(proj) > w / 2 - 22;
-  }
-
-  function drawSnapling(b, now, trayTilted) {
-    const s = b.snap;
-    const falling = b.label === 'piece-falling';
-    const held = b.label === 'piece';
-    const onEdge = nearTrayEdge(b);
-
-    if (s.squash > 0) s.squash = Math.max(0, s.squash - 0.06);
-    const sq = s.squash * 0.28;
-
-    ctx.save();
-    ctx.translate(b.position.x, b.position.y);
-    ctx.rotate(b.angle);
-    ctx.scale(1 + sq, 1 - sq);
-
-    ctx.fillStyle = 'rgba(0,0,0,0.18)';
-    ctx.beginPath();
-    ctx.ellipse(0, s.size * 0.52, s.size * 0.55, s.size * 0.16, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    const grad = ctx.createLinearGradient(0, -s.size, 0, s.size);
-    grad.addColorStop(0, s.skin[0]);
-    grad.addColorStop(1, s.skin[1]);
-    ctx.fillStyle = grad;
-    ctx.strokeStyle = 'rgba(30,10,50,0.5)';
-    ctx.lineWidth = 2.5;
-
-    if (s.type === 'circle') {
-      const r = s.size / 1.7;
-      ctx.beginPath();
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.fill(); ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      ctx.beginPath();
-      ctx.ellipse(-r * 0.35, -r * 0.45, r * 0.28, r * 0.16, -0.5, 0, Math.PI * 2);
-      ctx.fill();
-      if (s.kind === 'star') {
-        // orbiting sparkles
-        for (let i = 0; i < 3; i++) {
-          const a = now * 0.003 + i * (Math.PI * 2 / 3);
-          const sx = Math.cos(a) * (r + 7), sy = Math.sin(a) * (r + 7);
-          drawSparkle(sx, sy, 3.5, 'rgba(255,235,150,0.9)');
-        }
-      }
-    } else if (s.type === 'triangle') {
-      drawWorldPoly(b, now, trayTilted, onEdge);
-      return;
-    } else {
-      const half = s.size * 1.3 / 2;
-      roundRect(-half, -half, half * 2, half * 2, 8);
-      ctx.fill(); ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.3)';
-      roundRect(-half + 4, -half + 4, half * 2 - 8, 8, 4);
-      ctx.fill();
-    }
-
-    drawFace(b, now, falling, held, trayTilted, 0, onEdge);
-    ctx.restore();
-  }
-
   function drawSparkle(x, y, r, color) {
     ctx.fillStyle = color;
     ctx.beginPath();
@@ -1157,126 +917,35 @@
     ctx.fill();
   }
 
-  function drawWorldPoly(b, now, trayTilted, onEdge) {
-    ctx.restore();
+  function drawProp(b, now) {
     const s = b.snap;
-    const grad = ctx.createLinearGradient(b.position.x, b.position.y - s.size, b.position.x, b.position.y + s.size);
-    grad.addColorStop(0, s.skin[0]);
-    grad.addColorStop(1, s.skin[1]);
-    ctx.fillStyle = grad;
-    ctx.strokeStyle = 'rgba(30,10,50,0.5)';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    const vs = b.vertices;
-    ctx.moveTo(vs[0].x, vs[0].y);
-    for (let i = 1; i < vs.length; i++) ctx.lineTo(vs[i].x, vs[i].y);
-    ctx.closePath();
-    ctx.fill(); ctx.stroke();
+    const im = IMG[s.prop.img];
+    if (!im || !im.complete || !im.naturalWidth) return;
+    if (s.squash > 0) s.squash = Math.max(0, s.squash - 0.06);
+    const sq = s.squash * 0.22;
+    const dw = s.prop.w;
+    const dh = dw * im.naturalHeight / im.naturalWidth;
 
     ctx.save();
     ctx.translate(b.position.x, b.position.y);
     ctx.rotate(b.angle);
-    const falling = b.label === 'piece-falling';
-    const held = b.label === 'piece';
-    drawFace(b, now, falling, held, trayTilted, 4, onEdge);
-    ctx.restore();
-  }
+    ctx.scale(1 + sq, 1 - sq);
 
-  function drawFace(b, now, falling, held, trayTilted, yOff, onEdge) {
-    const s = b.snap;
-    const scale = s.size / 36;
-    const eyeY = -2 * scale + yOff;
-    const eyeDX = 7 * scale;
-    const worried = (trayTilted || onEdge) && b.label === 'piece-settled';
-
-    if (now > s.blinkAt) {
-      s.blinkUntil = now + 140;
-      s.blinkAt = now + 1600 + Math.random() * 3400;
-    }
-    const blinking = now < s.blinkUntil;
-    const look = Math.max(-2.5, Math.min(2.5, b.velocity.x * 1.2));
-
-    // chonk eyebrows
-    if (s.kind === 'chonk') {
-      ctx.strokeStyle = '#241335';
-      ctx.lineWidth = 2.6 * scale;
-      ctx.lineCap = 'round';
-      for (const dir of [-1, 1]) {
-        ctx.beginPath();
-        ctx.moveTo(dir * (eyeDX - 4 * scale), eyeY - 7 * scale);
-        ctx.lineTo(dir * (eyeDX + 4 * scale), eyeY - 8.5 * scale);
-        ctx.stroke();
-      }
-    }
-
-    ctx.fillStyle = '#241335';
-    for (const dir of [-1, 1]) {
-      const ex = dir * eyeDX;
-      if (blinking) {
-        ctx.strokeStyle = '#241335';
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.moveTo(ex - 4 * scale, eyeY);
-        ctx.lineTo(ex + 4 * scale, eyeY);
-        ctx.stroke();
-      } else if (falling) {
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(ex, eyeY, 5.4 * scale, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#241335';
-        ctx.beginPath();
-        ctx.arc(ex + look, eyeY + 1.5, 2.8 * scale, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        ctx.fillStyle = '#241335';
-        ctx.beginPath();
-        ctx.ellipse(ex + look * 0.6, eyeY, 3.2 * scale, 4.4 * scale, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.beginPath();
-        ctx.arc(ex + look * 0.6 - 1.1 * scale, eyeY - 1.4 * scale, 1.1 * scale, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    ctx.fillStyle = 'rgba(255,80,110,0.35)';
-    for (const dir of [-1, 1]) {
-      ctx.beginPath();
-      ctx.ellipse(dir * (eyeDX + 5.5 * scale), eyeY + 5.5 * scale, 3 * scale, 1.8 * scale, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    const mouthY = eyeY + 8.5 * scale;
-    ctx.strokeStyle = '#241335';
-    ctx.fillStyle = '#241335';
-    ctx.lineWidth = 2.2 * scale;
-    ctx.lineCap = 'round';
+    // contact shadow
+    ctx.fillStyle = 'rgba(60,30,10,0.18)';
     ctx.beginPath();
-    if (falling) {
-      ctx.arc(0, mouthY, 3.2 * scale, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (worried) {
-      const w = 5 * scale;
-      ctx.moveTo(-w, mouthY + Math.sin(now * 0.02) * 1.2);
-      ctx.quadraticCurveTo(0, mouthY + 3 * scale, w, mouthY + Math.sin(now * 0.02 + 2) * 1.2);
-      ctx.stroke();
-    } else {
-      ctx.arc(0, mouthY - 1.5 * scale, 4.5 * scale, 0.25 * Math.PI, 0.75 * Math.PI);
-      ctx.stroke();
-    }
+    ctx.ellipse(0, dh * 0.42, dw * 0.34, dh * 0.10, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-    // sweat drop when near the edge
-    if (onEdge && !falling) {
-      const wob = Math.sin(now * 0.008) * 1.5;
-      ctx.fillStyle = 'rgba(120,200,255,0.9)';
-      ctx.beginPath();
-      const sx = eyeDX + 8 * scale, sy = eyeY - 8 * scale + wob;
-      ctx.moveTo(sx, sy - 4 * scale);
-      ctx.quadraticCurveTo(sx + 4 * scale, sy + 2 * scale, sx, sy + 4 * scale);
-      ctx.quadraticCurveTo(sx - 4 * scale, sy + 2 * scale, sx, sy - 4 * scale);
-      ctx.fill();
+    ctx.drawImage(im, -dw / 2, -dh / 2, dw, dh);
+
+    if (s.prop.kind === 'star') {
+      for (let i = 0; i < 3; i++) {
+        const a = now * 0.003 + i * (Math.PI * 2 / 3);
+        drawSparkle(Math.cos(a) * (dw * 0.42 + 6), Math.sin(a) * (dw * 0.42 + 6), 3.5, 'rgba(255,235,150,0.9)');
+      }
     }
+    ctx.restore();
   }
 
   // ---------- Game state ----------
