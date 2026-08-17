@@ -687,8 +687,19 @@
     ctx.fill();
   }
 
-  // ---------- Kid & Mom characters ----------
-  const SKIN = '#ffd8b5', SKIN_SHADE = '#f2b98c', HAIR = '#4a2c1a', OUTLINE = '#241335';
+  // ---------- Kid & Mom characters (Kenney Toon Characters sprites, CC0) ----------
+  const OUTLINE = '#241335';
+  const IMG = {};
+  let imgCount = 0, imgLoaded = 0;
+  ['kid_head', 'kid_headFocus', 'kid_headShock', 'kid_body', 'kid_arm', 'kid_leg',
+   'mom_head', 'mom_headFocus', 'mom_headShock', 'mom_body', 'mom_arm', 'mom_leg'].forEach(name => {
+    imgCount++;
+    const im = new Image();
+    im.onload = () => imgLoaded++;
+    im.src = 'img/' + name + '.png';
+    IMG[name] = im;
+  });
+  function imgReady() { return imgLoaded === imgCount; }
 
   function floorY() { return height * 0.78 + 122; }
 
@@ -708,303 +719,169 @@
   }
 
   function drawKid(now) {
-    if (!tray) return;
+    if (!tray || !imgReady()) return;
     const px = width / 2, py = height * 0.78;
     const t = tray.angle;
     const at = Math.abs(t);
     const panic = at > 0.2, worry = at > 0.09;
     const fy = floorY();
+    const plankBot = py + 12;
 
-    const headR = 15;
-    const headY = py + 13 + headR - 3;
-    const lean = -t * 26;                    // body sways to counterbalance
+    // kid proportions: big head, short body & legs
+    const headImg = panic ? IMG.kid_headShock : (worry ? IMG.kid_headFocus : IMG.kid_head);
+    const HW = 56, HH = HW * headImg.height / headImg.width;      // ~60
+    const BW = 42, BH = BW * IMG.kid_body.height / IMG.kid_body.width * 0.82; // ~36
+    const lean = -t * 30;                                          // sway to counterbalance
     const wob = panic ? Math.sin(now * 0.03) * 2 : 0;
-    const hipY = headY + headR + 40;
-    const hipX = px + lean * 0.5 + wob;
 
-    ctx.lineCap = 'round';
+    const headX = px;                       // head stays under the plank pivot
+    const headTop = plankBot - 4;
+    const bodyX = px + lean * 0.55 + wob;
+    const bodyTop = headTop + HH - 10;
+    const bodyBot = bodyTop + BH;
 
-    // legs (bend more the harder the wobble)
-    ctx.strokeStyle = '#3f51b5';
-    ctx.lineWidth = 9;
-    const stance = 14 + at * 40;
+    // legs: stretch to the floor, spread wider as it gets scary
+    const stance = 12 + at * 55;
+    const legH = Math.max(20, fy - bodyBot + 4);
+    const LW = 17;
     for (const dir of [-1, 1]) {
-      const footX = px + dir * stance;
-      const kneeX = (hipX + footX) / 2 + dir * 3;
-      const kneeY = (hipY + fy) / 2 + at * 18;
-      ctx.beginPath();
-      ctx.moveTo(hipX, hipY);
-      ctx.quadraticCurveTo(kneeX, kneeY, footX, fy - 4);
-      ctx.stroke();
-      // shoe
-      ctx.fillStyle = '#8d6e63';
-      ctx.beginPath();
-      ctx.ellipse(footX + dir * 3, fy - 3, 8, 4.5, 0, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.save();
+      ctx.translate(px + dir * stance, fy);
+      if (dir === -1) ctx.scale(-1, 1);
+      ctx.drawImage(IMG.kid_leg, -LW / 2, -legH, LW, legH);
+      ctx.restore();
     }
 
-    // torso (shirt)
+    // arms: rotate from the shoulders, flailing opposite the tilt
+    const shY = bodyTop + 8;
+    const AW = 24, AH = AW * IMG.kid_arm.height / IMG.kid_arm.width;
+    for (const dir of [-1, 1]) {
+      const flail = dir * t * 3.2 + (panic ? Math.sin(now * 0.025 + dir) * 0.35 : 0);
+      ctx.save();
+      ctx.translate(bodyX + dir * (BW / 2 - 4), shY);
+      ctx.scale(dir, 1);                 // mirror for the left arm
+      ctx.rotate(-1.9 + flail * dir);    // raised outward for balance
+      ctx.drawImage(IMG.kid_arm, -4, -6, AW, AH);
+      ctx.restore();
+    }
+
+    // body
     ctx.save();
-    ctx.translate(hipX, hipY);
+    ctx.translate(bodyX, bodyTop);
     ctx.rotate(lean * 0.012);
-    const tw = 30, th = 44;
-    const shirt = ctx.createLinearGradient(0, -th, 0, 0);
-    shirt.addColorStop(0, '#ff8a65');
-    shirt.addColorStop(1, '#f4511e');
-    ctx.fillStyle = shirt;
-    roundRect(-tw / 2, -th, tw, th, 10);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(30,10,50,0.4)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    ctx.drawImage(IMG.kid_body, -BW / 2, 0, BW, BH);
     ctx.restore();
 
-    // arms flail opposite the tilt to counterbalance
-    const shY = headY + headR + 8;
-    const armSpread = 26 + at * 30;
-    ctx.strokeStyle = SKIN;
-    ctx.lineWidth = 7;
-    for (const dir of [-1, 1]) {
-      const raise = dir * t * 90 + (panic ? Math.sin(now * 0.025 + dir) * 10 : 0);
-      const hx = px + lean * 0.6 + dir * armSpread;
-      const hy = shY - 14 - raise * 0.4;
-      ctx.beginPath();
-      ctx.moveTo(px + lean * 0.55 + dir * 12, shY);
-      ctx.quadraticCurveTo(px + lean * 0.55 + dir * (armSpread * 0.7), shY - 4, hx, hy);
-      ctx.stroke();
-      // hand
-      ctx.fillStyle = SKIN;
-      ctx.beginPath();
-      ctx.arc(hx, hy, 4.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // head last (on top), balancing the plank
+    ctx.save();
+    ctx.translate(headX + lean * 0.2, headTop);
+    ctx.rotate(t * 0.35);                // head tilts subtly with the plank
+    ctx.drawImage(headImg, -HW / 2, 0, HW, HH);
 
-    // head (balancing the plank!)
-    const hx2 = px + lean * 0.25;
-    ctx.fillStyle = SKIN;
-    ctx.strokeStyle = 'rgba(30,10,50,0.4)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(hx2, headY, headR, 0, Math.PI * 2);
-    ctx.fill(); ctx.stroke();
-    // hair: flat top (squished by the plank)
-    ctx.fillStyle = HAIR;
-    ctx.beginPath();
-    ctx.arc(hx2, headY, headR, Math.PI * 1.05, Math.PI * 1.95);
-    ctx.lineTo(hx2 + headR * 0.6, headY - headR * 0.55);
-    ctx.closePath();
-    ctx.fill();
-    // ears
-    for (const dir of [-1, 1]) {
-      ctx.fillStyle = SKIN_SHADE;
-      ctx.beginPath();
-      ctx.arc(hx2 + dir * headR, headY + 2, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // face: calm -> focused -> panic
-    const lookDir = Math.max(-1, Math.min(1, t * 6));
-    ctx.fillStyle = OUTLINE;
-    for (const dir of [-1, 1]) {
-      const ex = hx2 + dir * 5.5 + lookDir * 2;
-      if (panic) {
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(ex, headY + 1, 4, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = OUTLINE;
-        ctx.beginPath(); ctx.arc(ex + lookDir, headY + 1.6, 2, 0, Math.PI * 2); ctx.fill();
-      } else if (worry) {
-        // concentrating: half-closed determined eyes
-        ctx.strokeStyle = OUTLINE;
-        ctx.lineWidth = 2.4;
+    // expression detailing overlays
+    if (worry && !panic) {
+      // effort blush
+      ctx.fillStyle = 'rgba(255,90,110,0.30)';
+      for (const dir of [-1, 1]) {
         ctx.beginPath();
-        ctx.moveTo(ex - 3, headY + 1);
-        ctx.lineTo(ex + 3, headY + 0);
-        ctx.stroke();
-      } else {
-        ctx.beginPath(); ctx.ellipse(ex, headY + 1, 2, 3, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.ellipse(dir * HW * 0.28, HH * 0.62, 5, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
-    // blush
-    ctx.fillStyle = 'rgba(255,90,110,0.35)';
-    for (const dir of [-1, 1]) {
-      ctx.beginPath();
-      ctx.ellipse(hx2 + dir * 9.5, headY + 6.5, 2.8, 1.6, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    // mouth
-    ctx.strokeStyle = OUTLINE;
-    ctx.fillStyle = OUTLINE;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
     if (panic) {
-      ctx.ellipse(hx2, headY + 8.5, 3, 4, 0, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (worry) {
-      // gritted concentration + tongue out
-      ctx.moveTo(hx2 - 4, headY + 8.5);
-      ctx.lineTo(hx2 + 4, headY + 8.5);
-      ctx.stroke();
-      ctx.fillStyle = '#ff5a76';
-      ctx.beginPath();
-      ctx.ellipse(hx2 + 3, headY + 10.5, 2.2, 2.8, 0, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      ctx.arc(hx2, headY + 6.5, 4, 0.2 * Math.PI, 0.8 * Math.PI);
-      ctx.stroke();
-    }
-    // sweat when panicking
-    if (panic) {
-      const wobS = Math.sin(now * 0.01) * 1.5;
+      // sweat drops flying off
       ctx.fillStyle = 'rgba(120,200,255,0.9)';
-      ctx.beginPath();
-      const sx = hx2 + headR + 3, sy = headY - 6 + wobS;
-      ctx.moveTo(sx, sy - 4);
-      ctx.quadraticCurveTo(sx + 4, sy + 2, sx, sy + 5);
-      ctx.quadraticCurveTo(sx - 4, sy + 2, sx, sy - 4);
-      ctx.fill();
+      for (const dir of [-1, 1]) {
+        const ph = (now * 0.006 + (dir + 1)) % 1;
+        const sx = dir * (HW * 0.5 + 4 + ph * 10);
+        const sy = HH * 0.25 - ph * 14;
+        ctx.globalAlpha = 1 - ph;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - 4);
+        ctx.quadraticCurveTo(sx + 3.5, sy + 1.5, sx, sy + 4.5);
+        ctx.quadraticCurveTo(sx - 3.5, sy + 1.5, sx, sy - 4);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      // "!!" burst above head
+      ctx.fillStyle = '#ffd54f';
+      ctx.font = '900 17px -apple-system, "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('!!', HW * 0.45, -4);
     }
+    ctx.restore();
   }
 
   function drawMom(now) {
-    if (!tray) return;
+    if (!tray || !imgReady()) return;
     const t = Math.abs(tray.angle);
     const panic = t > 0.2, worry = t > 0.09;
     const fy = floorY();
     const mx = Math.max(58, width / 2 - Math.min(width * 0.34, 185));
     const bob = Math.sin(now * 0.0028) * 2 + (panic ? Math.sin(now * 0.02) * 2 : 0);
-    const bodyW = 62, bodyH = 74;
-    const byBot = fy;
-    const byTop = byBot - bodyH + bob;
 
-    // dress (round motherly figure)
-    const dress = ctx.createLinearGradient(0, byTop, 0, byBot);
-    dress.addColorStop(0, '#ec6a9c');
-    dress.addColorStop(1, '#c2185b');
-    ctx.fillStyle = dress;
-    ctx.strokeStyle = 'rgba(30,10,50,0.4)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(mx, byTop + 14);
-    ctx.quadraticCurveTo(mx - bodyW * 0.72, byTop + bodyH * 0.4, mx - bodyW * 0.52, byBot);
-    ctx.lineTo(mx + bodyW * 0.52, byBot);
-    ctx.quadraticCurveTo(mx + bodyW * 0.72, byTop + bodyH * 0.4, mx, byTop + 14);
-    ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    // apron
-    ctx.fillStyle = 'rgba(255,245,230,0.85)';
-    ctx.beginPath();
-    ctx.moveTo(mx - 14, byTop + 30);
-    ctx.quadraticCurveTo(mx, byTop + 26, mx + 14, byTop + 30);
-    ctx.quadraticCurveTo(mx + 16, byBot - 6, mx, byBot - 4);
-    ctx.quadraticCurveTo(mx - 16, byBot - 6, mx - 14, byTop + 30);
-    ctx.fill();
+    // adult proportions: smaller head, taller body
+    const headImg = panic ? IMG.mom_headShock : (worry ? IMG.mom_headFocus : IMG.mom_head);
+    const HW = 42, HH = HW * headImg.height / headImg.width;      // ~33
+    const BW = 48, BH = BW * IMG.mom_body.height / IMG.mom_body.width; // ~57
+    const legH = 26, LW = 16;
+
+    const bodyBot = fy;
+    const bodyTop = bodyBot - legH - BH + bob;
+    const headTop = bodyTop - HH + 8;
+
+    // legs
+    for (const dir of [-1, 1]) {
+      ctx.save();
+      ctx.translate(mx + dir * 10, fy);
+      if (dir === -1) ctx.scale(-1, 1);
+      ctx.drawImage(IMG.mom_leg, -LW / 2, -legH, LW, legH);
+      ctx.restore();
+    }
+
+    // arms: relaxed down when calm, up to her face when worried, waving in panic
+    const AW = 22, AH = AW * IMG.mom_arm.height / IMG.mom_arm.width;
+    const shY = bodyTop + 10;
+    for (const dir of [-1, 1]) {
+      let rot;
+      if (panic) rot = -2.4 + Math.sin(now * 0.02 + dir) * 0.5;   // waving overhead
+      else if (worry) rot = -2.6;                                  // hands to cheeks
+      else rot = -0.5;                                             // relaxed at sides
+      ctx.save();
+      ctx.translate(mx + dir * (BW / 2 - 5), shY);
+      ctx.scale(dir, 1);
+      ctx.rotate(rot);
+      ctx.drawImage(IMG.mom_arm, -4, -6, AW, AH);
+      ctx.restore();
+    }
+
+    // body
+    ctx.drawImage(IMG.mom_body, mx - BW / 2, bodyTop, BW, BH);
 
     // head
-    const hR = 13;
-    const hy = byTop + 4;
-    ctx.fillStyle = SKIN;
-    ctx.strokeStyle = 'rgba(30,10,50,0.4)';
-    ctx.beginPath();
-    ctx.arc(mx, hy, hR, 0, Math.PI * 2);
-    ctx.fill(); ctx.stroke();
-    // hair + bun
-    ctx.fillStyle = '#33251c';
-    ctx.beginPath();
-    ctx.arc(mx, hy, hR, Math.PI * 0.95, Math.PI * 2.05);
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(mx, hy - hR - 3, 6, 0, Math.PI * 2);
-    ctx.fill();
-
-    // hands: clasped when calm, on cheeks when worried, waving when panic
-    ctx.fillStyle = SKIN;
+    ctx.save();
+    ctx.translate(mx, headTop);
+    const leanToKid = worry ? 0.08 : 0.02;                         // leans toward the kid
+    ctx.rotate(leanToKid);
+    ctx.drawImage(headImg, -HW / 2, 0, HW, HH);
     if (panic) {
-      const wave = Math.sin(now * 0.02) * 6;
-      for (const dir of [-1, 1]) {
-        ctx.strokeStyle = '#c2185b';
-        ctx.lineWidth = 7;
-        ctx.beginPath();
-        ctx.moveTo(mx + dir * 20, byTop + 30);
-        ctx.quadraticCurveTo(mx + dir * 34, byTop + 12, mx + dir * 30, hy - 8 - wave * dir);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(mx + dir * 30, hy - 8 - wave * dir, 5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } else if (worry) {
-      for (const dir of [-1, 1]) {
-        ctx.strokeStyle = '#c2185b';
-        ctx.lineWidth = 7;
-        ctx.beginPath();
-        ctx.moveTo(mx + dir * 20, byTop + 32);
-        ctx.quadraticCurveTo(mx + dir * 26, byTop + 16, mx + dir * hR, hy + 4);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(mx + dir * hR, hy + 4, 5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } else {
-      ctx.strokeStyle = '#c2185b';
-      ctx.lineWidth = 7;
-      for (const dir of [-1, 1]) {
-        ctx.beginPath();
-        ctx.moveTo(mx + dir * 20, byTop + 32);
-        ctx.quadraticCurveTo(mx + dir * 14, byTop + 44, mx + dir * 4, byTop + 48);
-        ctx.stroke();
-      }
+      // sweat drop
+      const wobS = Math.sin(now * 0.01) * 1.5;
+      ctx.fillStyle = 'rgba(120,200,255,0.9)';
       ctx.beginPath();
-      ctx.arc(mx - 3, byTop + 49, 4.5, 0, Math.PI * 2);
-      ctx.arc(mx + 3, byTop + 49, 4.5, 0, Math.PI * 2);
+      const sx = HW * 0.5 + 3, sy = HH * 0.2 + wobS;
+      ctx.moveTo(sx, sy - 4);
+      ctx.quadraticCurveTo(sx + 4, sy + 2, sx, sy + 5);
+      ctx.quadraticCurveTo(sx - 4, sy + 2, sx, sy - 4);
       ctx.fill();
     }
+    ctx.restore();
 
-    // face
-    ctx.fillStyle = OUTLINE;
-    const kidDir = 1; // kid is to her right
-    for (const dir of [-1, 1]) {
-      const ex = mx + dir * 4.5 + kidDir * 1.5;
-      if (panic) {
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(ex, hy + 1, 3.4, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = OUTLINE;
-        ctx.beginPath(); ctx.arc(ex + 1, hy + 1.4, 1.7, 0, Math.PI * 2); ctx.fill();
-      } else {
-        ctx.beginPath(); ctx.ellipse(ex, hy + 1, 1.7, 2.5, 0, 0, Math.PI * 2); ctx.fill();
-      }
-    }
-    // worried brows
-    if (worry || panic) {
-      ctx.strokeStyle = OUTLINE;
-      ctx.lineWidth = 1.8;
-      for (const dir of [-1, 1]) {
-        ctx.beginPath();
-        ctx.moveTo(mx + dir * 7, hy - 4.5);
-        ctx.lineTo(mx + dir * 2.5, hy - 6.5);
-        ctx.stroke();
-      }
-    }
-    // mouth
-    ctx.strokeStyle = OUTLINE;
-    ctx.fillStyle = OUTLINE;
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    if (panic) {
-      ctx.ellipse(mx, hy + 7, 2.6, 3.4, 0, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (worry) {
-      ctx.moveTo(mx - 4, hy + 8);
-      ctx.quadraticCurveTo(mx, hy + 5.5, mx + 4, hy + 8);
-      ctx.stroke();
-    } else {
-      ctx.arc(mx, hy + 5.5, 3.4, 0.2 * Math.PI, 0.8 * Math.PI);
-      ctx.stroke();
-    }
     // "!" alarm bubble when panicking
     if (panic) {
       const pulse = 1 + Math.sin(now * 0.015) * 0.1;
       ctx.save();
-      ctx.translate(mx + 24, hy - 26);
+      ctx.translate(mx + 26, headTop - 14);
       ctx.scale(pulse, pulse);
       ctx.fillStyle = '#fff';
       ctx.beginPath();
@@ -1017,6 +894,17 @@
       ctx.fillText('!', 0, 1);
       ctx.restore();
       ctx.textBaseline = 'alphabetic';
+    } else if (worry) {
+      // "..." thought dots
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      for (let i = 0; i < 3; i++) {
+        const ph = Math.sin(now * 0.005 + i * 0.9) * 0.5 + 0.5;
+        ctx.globalAlpha = 0.3 + ph * 0.6;
+        ctx.beginPath();
+        ctx.arc(mx + 20 + i * 8, headTop - 10 - i * 3, 2.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
   }
 
