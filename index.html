@@ -30,6 +30,7 @@
   }
   #score.bump { transform: scale(1.18); }
   #best { font-size: 14px; opacity: 0.85; margin-top: 2px; font-weight: 600; }
+  #lives { font-size: 18px; margin-top: 6px; letter-spacing: 2px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
   #combo {
     font-size: 16px; font-weight: 800; margin-top: 6px; color: #7bffb0;
     opacity: 0; transition: opacity .2s ease;
@@ -113,6 +114,7 @@
   <div>
     <div id="score">0</div>
     <div id="best">Best: 0</div>
+    <div id="lives"></div>
     <div id="combo"></div>
   </div>
   <div id="rightHud">
@@ -147,6 +149,7 @@
   const scoreEl = document.getElementById('score');
   const bestEl = document.getElementById('best');
   const comboEl = document.getElementById('combo');
+  const livesEl = document.getElementById('lives');
   const overlay = document.getElementById('overlay');
   const overlayText = document.getElementById('overlayText');
   const playBtn = document.getElementById('playBtn');
@@ -200,6 +203,8 @@
     star() { [660, 880, 1100, 1320].forEach((f, i) => tone(f, 0.16, 'sine', 0.08, i * 0.07)); },
     milestone() { [523, 659, 784].forEach((f, i) => tone(f, 0.22, 'triangle', 0.09, i * 0.09)); },
     tilt() { tone(70, 0.3, 'sawtooth', 0.05); },
+    lose() { tone(300, 0.18, 'triangle', 0.12); tone(180, 0.3, 'triangle', 0.12, 0.12); },
+    levelUp() { [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.2, 'triangle', 0.09, i * 0.08)); },
     over() { [400, 300, 200, 130].forEach((f, i) => tone(f, 0.3, 'triangle', 0.1, i * 0.16)); }
   };
 
@@ -274,7 +279,25 @@
   let lastLandTime = 0;
   let combo = 0, maxCombo = 0;
   let piecesLanded = 0;
-  let lastMilestone = 0;
+  let lives = 3, level = 1;
+  let momText = '', momUntil = 0, nextAmbient = 0;
+
+  const MOM_LINES = {
+    calm: ["You've got this, Milo!", "Steady now...", "Looking good!", "My careful boy!"],
+    worry: ["Careful, sweetie!", "Watch that side!", "Hmm... easy now!", "Oh dear..."],
+    panic: ["IT'S TIPPING!!", "AAAH! MILO!", "Watch out!!"],
+    life: ["Oh no!!", "My goodness!", "Milo!!"],
+    star: ["Ooh, a golden one!", "So shiny!"],
+    level: ["That's my boy!", "Level up! Amazing!", "You're a natural!"]
+  };
+  function momSay(kind, dur) {
+    const lines = MOM_LINES[kind];
+    momText = lines[Math.floor(Math.random() * lines.length)];
+    momUntil = performance.now() + (dur || 2400);
+  }
+  function updateLives() {
+    livesEl.textContent = '❤️'.repeat(Math.max(0, lives)) + '🤍'.repeat(Math.max(0, 3 - lives));
+  }
 
   function resize() {
     dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -422,6 +445,7 @@
           popups.push({ x: b.position.x, y: b.position.y - 28, text: '⭐ +25', life: 1.3, color: '#ffe082' });
           confetti(b.position.x, b.position.y, 26);
           sfx.star();
+          momSay('star');
         } else if (b.snap.kind === 'chonk') {
           bonusScore += 10;
           popups.push({ x: b.position.x, y: b.position.y - 30, text: '+10', life: 1, color: '#aab6fe' });
@@ -469,12 +493,12 @@
   }
 
   function tiltTray(now) {
-    // difficulty ramps: gust interval shrinks from 6s to 3.2s over ~70s
-    const interval = Math.max(3200, 6000 - (now - startTime) * 0.04);
+    // difficulty scales with level: gusts come sooner and hit harder
+    const interval = Math.max(2600, 6200 - (level - 1) * 800);
     if (now - lastTiltTime < interval) return;
     lastTiltTime = now;
     // a gust of wind nudges the seesaw instead of teleporting it
-    const kick = (Math.random() - 0.5) * 0.05;
+    const kick = (Math.random() - 0.5) * (0.04 + level * 0.008);
     Body.setAngularVelocity(tray, tray.angularVelocity + kick);
     const newW = Math.max(140, trayWidth * 0.94);
     if (newW < trayWidth) {
@@ -497,14 +521,27 @@
     return Math.max(0, Math.round(maxHeight / 3) + settled.length * 5) + bonusScore;
   }
 
-  function checkGameOver() {
+  function handleFallen() {
     const pieces = Composite.allBodies(world).filter(b => b.label === 'piece-settled' || b.label === 'piece-falling');
     for (const p of pieces) {
-      if (p.position.y > floorY() + 30 || p.position.x < -80 || p.position.x > width + 80) {
-        return true;
+      if (p.position.y > floorY() + 10 || p.position.x < -80 || p.position.x > width + 80) {
+        World.remove(world, p);
+        lives--;
+        updateLives();
+        shake = 10;
+        combo = 0;
+        comboEl.classList.remove('show');
+        burst(Math.min(Math.max(p.position.x, 20), width - 20), floorY() - 6, '#ff6b6b', 12);
+        popups.push({ x: Math.min(Math.max(p.position.x, 50), width - 50), y: floorY() - 40, text: '-1 ❤', life: 1.3, color: '#ff6b6b' });
+        sfx.lose();
+        momSay('life');
+        if (lives <= 0 && !gameOverTriggered) {
+          gameOverTriggered = true;
+          endGame();
+          return;
+        }
       }
     }
-    return false;
   }
 
   function gameLoop() {
@@ -520,19 +557,24 @@
     score = computeScore();
     scoreEl.textContent = score;
 
-    // milestones every 50
-    const mile = Math.floor(score / 50);
-    if (mile > lastMilestone && score > 0) {
-      lastMilestone = mile;
-      confetti(width / 2, height * 0.35, 34);
-      popups.push({ x: width / 2, y: height * 0.32, text: (mile * 50) + '!', life: 1.6, color: '#ffd98a', big: true });
-      sfx.milestone();
+    // level up every 100 points
+    const lv = Math.floor(score / 100) + 1;
+    if (lv > level) {
+      level = lv;
+      confetti(width / 2, height * 0.35, 40);
+      popups.push({ x: width / 2, y: height * 0.32, text: 'LEVEL ' + level, life: 1.8, color: '#ffd98a', big: true });
+      sfx.levelUp();
+      momSay('level');
     }
 
-    if (!gameOverTriggered && checkGameOver()) {
-      gameOverTriggered = true;
-      endGame();
+    // Mom chats every so often based on how scary things look
+    if (now > nextAmbient && now > momUntil) {
+      const at = Math.abs(tray.angle);
+      momSay(at > 0.2 ? 'panic' : at > 0.09 ? 'worry' : 'calm');
+      nextAmbient = now + 7000 + Math.random() * 5000;
     }
+
+    if (!gameOverTriggered) handleFallen();
   }
 
   // ---------- Renderer ----------
@@ -624,6 +666,53 @@
     }
 
     drawNextPreview(now);
+    drawBalanceMeter(now);
+  }
+
+  function drawBalanceMeter(now) {
+    if (!running || !tray) return;
+    const MAX = 0.34;
+    const t = Math.max(-MAX, Math.min(MAX, tray.angle));
+    const mh = Math.min(170, height * 0.24);
+    const mx = 14, my = height * 0.42 - mh / 2;
+
+    ctx.save();
+    // track
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 2;
+    roundRect(mx, my, 12, mh, 6);
+    ctx.fill(); ctx.stroke();
+    // gradient: red top, green middle, red bottom
+    const g = ctx.createLinearGradient(0, my, 0, my + mh);
+    g.addColorStop(0, '#ff5252');
+    g.addColorStop(0.28, '#ffb020');
+    g.addColorStop(0.5, '#4cd97b');
+    g.addColorStop(0.72, '#ffb020');
+    g.addColorStop(1, '#ff5252');
+    ctx.fillStyle = g;
+    roundRect(mx + 2.5, my + 2.5, 7, mh - 5, 4);
+    ctx.fill();
+    // needle
+    const ny = my + mh / 2 + (t / MAX) * (mh / 2 - 8);
+    const danger = Math.abs(t) > 0.2;
+    const pulse = danger ? 1 + Math.sin(now * 0.02) * 0.2 : 1;
+    ctx.fillStyle = danger ? '#ff5252' : '#fff';
+    ctx.beginPath();
+    ctx.moveTo(mx + 16, ny);
+    ctx.lineTo(mx + 16 + 9 * pulse, ny - 6 * pulse);
+    ctx.lineTo(mx + 16 + 9 * pulse, ny + 6 * pulse);
+    ctx.closePath();
+    ctx.fill();
+    // label
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = '700 9px -apple-system, "Segoe UI", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.save();
+    ctx.translate(mx + 6, my - 8);
+    ctx.fillText('BALANCE', 14, 0);
+    ctx.restore();
+    ctx.restore();
   }
 
   function drawNextPreview(now) {
@@ -877,8 +966,36 @@
     }
     ctx.restore();
 
-    // "!" alarm bubble when panicking
-    if (panic) {
+    // speech bubble (takes priority over the "!" icon)
+    if (now < momUntil && momText) {
+      ctx.save();
+      ctx.font = '700 13px -apple-system, "Segoe UI", sans-serif';
+      const tw = ctx.measureText(momText).width;
+      const bw = tw + 22, bh = 28;
+      let bx = mx - bw / 2 + 30;
+      bx = Math.max(8, Math.min(width - bw - 8, bx));
+      const by = headTop - bh - 18;
+      // bubble body
+      ctx.fillStyle = 'rgba(255,255,255,0.96)';
+      ctx.strokeStyle = 'rgba(30,10,50,0.25)';
+      ctx.lineWidth = 2;
+      roundRect(bx, by, bw, bh, 12);
+      ctx.fill(); ctx.stroke();
+      // tail
+      ctx.fillStyle = 'rgba(255,255,255,0.96)';
+      ctx.beginPath();
+      ctx.moveTo(mx + 8, by + bh - 2);
+      ctx.lineTo(mx + 2, by + bh + 10);
+      ctx.lineTo(mx + 18, by + bh - 2);
+      ctx.closePath();
+      ctx.fill();
+      // text
+      const scary = momText === momText.toUpperCase() && /[A-Z]/.test(momText);
+      ctx.fillStyle = scary ? '#e53935' : '#3b1a55';
+      ctx.textAlign = 'center';
+      ctx.fillText(momText, bx + bw / 2, by + 18.5);
+      ctx.restore();
+    } else if (panic) {
       const pulse = 1 + Math.sin(now * 0.015) * 0.1;
       ctx.save();
       ctx.translate(mx + 26, headTop - 14);
@@ -1183,6 +1300,7 @@
       '<span id="stats">' +
         '<span class="stat"><b>' + piecesLanded + '</b><span>stacked</span></span>' +
         '<span class="stat"><b>x' + Math.max(maxCombo, 1) + '</b><span>max combo</span></span>' +
+        '<span class="stat"><b>' + level + '</b><span>level</span></span>' +
       '</span>';
     playBtn.textContent = 'Play Again';
     overlay.classList.remove('hidden');
@@ -1199,7 +1317,10 @@
     score = 0; bonusScore = 0;
     combo = 0; maxCombo = 0;
     piecesLanded = 0;
-    lastMilestone = 0;
+    lives = 3; level = 1;
+    updateLives();
+    momText = ''; momUntil = 0;
+    nextAmbient = performance.now() + 4000;
     lastLandTime = 0;
     particles = [];
     popups = [];
