@@ -237,9 +237,9 @@
 
   function bodyFromSpec(spec, x, y) {
     const options = {
-      restitution: spec.kind === 'boing' ? 0.55 : 0.05,
-      friction: 0.9,
-      frictionStatic: 1.2,
+      restitution: spec.kind === 'boing' ? 0.55 : 0.03,
+      friction: 1.5,          // Matter uses min(friction) of the pair — keep both high
+      frictionStatic: 3,
       density: spec.kind === 'chonk' ? 0.005 : 0.002
     };
     let body;
@@ -338,6 +338,8 @@
     engine = Engine.create();
     world = engine.world;
     engine.gravity.y = 1;
+    engine.positionIterations = 10;   // better contact/friction resolution for tall stacks
+    engine.velocityIterations = 8;
 
     runner = Runner.create();
     Runner.run(runner, engine);
@@ -351,8 +353,8 @@
       chamfer: { radius: 6 },
       label: 'tray',
       density: 0.007,          // heavier plank: slower, smoother swings
-      friction: 0.9,
-      frictionStatic: 1.2,
+      friction: 1.5,           // grippy wood — objects shouldn't skate off
+      frictionStatic: 3,
       frictionAir: 0.10,       // more damping: less jitter
       restitution: 0
     });
@@ -822,24 +824,49 @@
     ctx.restore();
   }
 
+  // pre-rendered upper 52% of Mom with a soft fade at the cut, so she can lean
+  // into frame from the edge without a hard crop line
+  let momUpper = null;
+  function getMomUpper() {
+    const im = IMG.mom;
+    if (momUpper || !im.complete || !im.naturalWidth) return momUpper;
+    const c = document.createElement('canvas');
+    c.width = im.naturalWidth;
+    c.height = Math.round(im.naturalHeight * 0.52);
+    const g = c.getContext('2d');
+    g.drawImage(im, 0, 0);
+    g.globalCompositeOperation = 'destination-out';
+    const grad = g.createLinearGradient(0, c.height * 0.78, 0, c.height);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,1)');
+    g.fillStyle = grad;
+    g.fillRect(0, c.height * 0.78, c.width, c.height * 0.22);
+    momUpper = c;
+    return momUpper;
+  }
+
   function drawMom(now) {
     if (!tray || !imgReady()) return;
+    const mu = getMomUpper();
+    if (!mu) return;
     const t = Math.abs(tray.angle);
     const panic = t > 0.2, worry = t > 0.09;
-    const fy = floorY();
-    const dw = Math.min(118, width * 0.28);
-    const dh = dw * IMG.mom.naturalHeight / IMG.mom.naturalWidth;
-    const mx = Math.max(14 + dw / 2, width / 2 - Math.min(width * 0.36, 200));
-    const bob = Math.sin(now * 0.0028) * 2 + (panic ? Math.sin(now * 0.02) * 2 : 0);
-    const top = fy - dh + bob;
+    // zoomed upper body leaning in from the mid-right, slanted toward Milo
+    const dw = Math.min(250, width * 0.56);
+    const dh = dw * mu.height / mu.width;
+    const bob = Math.sin(now * 0.0028) * 3 + (panic ? Math.sin(now * 0.02) * 2 : 0);
+    const hx = width - dw * 0.28;
+    const hy = height * 0.45 + bob;
+    const slant = -0.24 + (panic ? Math.sin(now * 0.02) * 0.03 : 0);
 
     ctx.save();
-    ctx.translate(mx, top + dh);
-    if (panic) ctx.rotate(Math.sin(now * 0.02) * 0.03);
-    ctx.drawImage(IMG.mom, -dw / 2, -dh, dw, dh);
+    ctx.translate(hx, hy);
+    ctx.rotate(slant);
+    ctx.drawImage(mu, -dw / 2, -dh * 0.22, dw, dh);
     ctx.restore();
 
-    const headTop = top + 8;
+    const headTop = hy - dh * 0.16;
+    const mx = hx - dw * 0.16;
 
     // speech bubble (takes priority over the "!" icon)
     if (now < momUntil && momText) {
@@ -870,7 +897,7 @@
     } else if (panic) {
       const pulse = 1 + Math.sin(now * 0.015) * 0.1;
       ctx.save();
-      ctx.translate(mx + dw / 2 + 6, headTop - 6);
+      ctx.translate(hx - dw * 0.42, headTop - 6);
       ctx.scale(pulse, pulse);
       ctx.fillStyle = '#fff';
       ctx.beginPath();
@@ -889,7 +916,7 @@
         const ph = Math.sin(now * 0.005 + i * 0.9) * 0.5 + 0.5;
         ctx.globalAlpha = 0.3 + ph * 0.6;
         ctx.beginPath();
-        ctx.arc(mx + dw / 2 + i * 8, headTop - 4 - i * 3, 2.4, 0, Math.PI * 2);
+        ctx.arc(hx - dw * 0.40 - i * 8, headTop - 4 - i * 3, 2.4, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.globalAlpha = 1;
