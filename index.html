@@ -350,10 +350,10 @@
     tray = Bodies.rectangle(pivotX, pivotY, trayWidth, 26, {
       chamfer: { radius: 6 },
       label: 'tray',
-      density: 0.004,
+      density: 0.007,          // heavier plank: slower, smoother swings
       friction: 0.9,
       frictionStatic: 1.2,
-      frictionAir: 0.06,
+      frictionAir: 0.10,       // more damping: less jitter
       restitution: 0
     });
 
@@ -361,14 +361,18 @@
     wallR = Bodies.rectangle(width + 20, height / 2, 40, height * 4, { isStatic: true, label: 'wall' });
 
     World.add(world, [tray, wallL, wallR]);
+    window.__tiltDebug = () => (tray ? tray.angle : null);
 
     // Spring keeps the tray level until the stack genuinely outweighs it
     Events.on(engine, 'beforeUpdate', () => {
       Body.setPosition(tray, { x: pivotX, y: pivotY });
       Body.setVelocity(tray, { x: 0, y: 0 });
-      const K = tray.inertia * 9e-6;   // leveling spring strength
-      const MAX = 0.34;                // hard tilt limit (rad)
-      tray.torque += -K * tray.angle;
+      const K = tray.inertia * 1.1e-5;      // leveling spring strength
+      const D = tray.inertia * 1.6e-3;      // velocity damping: smooth, no wobble-jitter
+      const SOFT = 0.26, MAX = 0.38;        // progressive soft stop, then hard safety
+      tray.torque += -K * tray.angle - D * tray.angularVelocity;
+      const over = Math.abs(tray.angle) - SOFT;
+      if (over > 0) tray.torque += -Math.sign(tray.angle) * K * over * 14;
       if (tray.angle > MAX) { Body.setAngle(tray, MAX); if (tray.angularVelocity > 0) Body.setAngularVelocity(tray, 0); }
       if (tray.angle < -MAX) { Body.setAngle(tray, -MAX); if (tray.angularVelocity < 0) Body.setAngularVelocity(tray, 0); }
     });
@@ -505,7 +509,7 @@
     if (now - lastTiltTime < interval) return;
     lastTiltTime = now;
     // a gust of wind nudges the seesaw instead of teleporting it
-    const kick = (Math.random() - 0.5) * (0.04 + level * 0.008);
+    const kick = (Math.random() - 0.5) * (0.022 + level * 0.005);
     Body.setAngularVelocity(tray, tray.angularVelocity + kick);
     const newW = Math.max(140, trayWidth * 0.94);
     if (newW < trayWidth) {
@@ -679,7 +683,7 @@
 
   function drawBalanceMeter(now) {
     if (!running || !tray) return;
-    const MAX = 0.34;
+    const MAX = 0.38;
     const t = Math.max(-MAX, Math.min(MAX, tray.angle));
     const mh = Math.min(170, height * 0.24);
     const mx = 14, my = height * 0.42 - mh / 2;
@@ -796,8 +800,8 @@
   });
   function imgReady() { return imgLoaded === imgCount; }
 
-  const KID_RATIO = 590 / 460;   // kid sprite aspect (h/w)
-  function kidW() { return Math.min(200, width * 0.48, (height * 0.29 - 14) / KID_RATIO); }
+  const KID_RATIO = 475 / 460;   // kid sprite aspect (h/w), cropped at the wrists
+  function kidW() { return Math.min(220, width * 0.52, (height * 0.29 - 14) / KID_RATIO); }
   function floorY() { return height * 0.70 + 6 + kidW() * KID_RATIO; }
 
   function drawFloor() { /* floor is part of the background art */ }
@@ -812,7 +816,7 @@
     const lean = -t * 18;
     const wob = at > 0.2 ? Math.sin(now * 0.03) * 2 : 0;
     ctx.save();
-    ctx.translate(px + lean * 0.3 + wob, py + 6);
+    ctx.translate(px + lean * 0.3 + wob, py + 9);
     ctx.rotate(t * 0.05);
     ctx.drawImage(im, -dw / 2, 0, dw, dh);
     ctx.restore();
@@ -930,6 +934,26 @@
       ctx.lineWidth = 5;
       roundRect(-w / 2 - 4, -17, w + 8, 34, 15);
       ctx.stroke();
+    }
+
+    // Milo's hands gripping the plank (drawn in plank space so they follow the tilt)
+    const handX = Math.min(kidW() * 0.34, w / 2 - 14);
+    for (const dir of [-1, 1]) {
+      ctx.fillStyle = '#f6c290';
+      ctx.strokeStyle = 'rgba(120,60,20,0.45)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(dir * handX, 7, 11, 8.5, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      // finger lines wrapping the plank front
+      ctx.strokeStyle = 'rgba(120,60,20,0.35)';
+      ctx.lineWidth = 1.5;
+      for (let f = -1; f <= 1; f++) {
+        ctx.beginPath();
+        ctx.moveTo(dir * handX + f * 4.5, 0);
+        ctx.quadraticCurveTo(dir * handX + f * 4.5 - 1, 6, dir * handX + f * 4.5, 11);
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }
