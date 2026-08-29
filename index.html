@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪵</text></svg>">
+<link rel="apple-touch-icon" href="data:,">
 <title>Stack &amp; Snap</title>
 <style>
   html, body {
@@ -130,10 +132,10 @@
     <div class="mascot" style="background:linear-gradient(180deg,#b39dff,#8c6bf0)"><div class="smile"></div></div>
   </div>
   <h1>Stack &amp; Snap</h1>
-  <p id="overlayText">Milo is balancing a plank on his head &mdash; and Mom is watching nervously! Drop toys and treats onto his plank, keep it balanced, chain quick landings for combos, and watch for rare golden Stars.</p>
+  <p id="overlayText">Milo is balancing a plank on his head &mdash; and Mom is watching nervously! Drop Snaplings onto his plank, keep them balanced, chain quick landings for combos, and watch for rare golden Stars.</p>
   <div id="legend">
-    <div><i style="background:#8d6e63"></i>Teddy: heavy</div>
-    <div><i style="background:#a0522d;border-radius:50%"></i>Ball: bouncy</div>
+    <div><i style="background:#3949ab"></i>Chonk: heavy</div>
+    <div><i style="background:#4cd97b;border-radius:50%"></i>Boing: bouncy</div>
     <div><i style="background:#ffb300;border-radius:50%"></i>Star: +25</div>
   </div>
   <button class="playBtn" id="playBtn">Play</button>
@@ -208,33 +210,29 @@
     over() { [400, 300, 200, 130].forEach((f, i) => tone(f, 0.3, 'triangle', 0.1, i * 0.16)); }
   };
 
-  // ---------- Props (player-generated art) ----------
-  const PROPS = [
-    { img: 'prop_apple',    kind: 'normal', w: 54, shape: 'circle' },
-    { img: 'prop_orange',   kind: 'normal', w: 54, shape: 'circle' },
-    { img: 'prop_book',     kind: 'normal', w: 64, shape: 'rect' },
-    { img: 'prop_car',      kind: 'normal', w: 68, shape: 'rect' },
-    { img: 'prop_duck',     kind: 'normal', w: 56, shape: 'rect' },
-    { img: 'prop_cake',     kind: 'normal', w: 62, shape: 'rect' },
-    { img: 'prop_clock',    kind: 'normal', w: 54, shape: 'circle' },
-    { img: 'prop_shoe',     kind: 'pip',    w: 46, shape: 'rect' },
-    { img: 'prop_slipper',  kind: 'pip',    w: 44, shape: 'rect' },
-    { img: 'prop_teddy',    kind: 'chonk',  w: 82, shape: 'rect' },
-    { img: 'prop_football', kind: 'boing',  w: 56, shape: 'circle' },
-    { img: 'prop_star',     kind: 'star',   w: 54, shape: 'circle' }
+  // ---------- Snapling characters ----------
+  const SKINS = [
+    ['#ff8a80', '#ff5252'],
+    ['#ffd166', '#ffb020'],
+    ['#82e9de', '#26c6a2'],
+    ['#8ecdf7', '#3f9ff0'],
+    ['#b39dff', '#8c6bf0'],
+    ['#ffb0d8', '#ff70b8']
   ];
+  const SHAPES = ['box', 'circle', 'triangle'];
 
   function makeSpec() {
     const roll = Math.random();
-    if (roll < 0.05) return PROPS.find(p => p.kind === 'star');
-    if (roll < 0.15) return PROPS.find(p => p.kind === 'chonk');
-    if (roll < 0.25) return PROPS.find(p => p.kind === 'boing');
-    if (roll < 0.38) {
-      const pips = PROPS.filter(p => p.kind === 'pip');
-      return pips[Math.floor(Math.random() * pips.length)];
+    if (roll < 0.05) {
+      return { kind: 'star', type: 'circle', skin: ['#ffe082', '#ffb300'], size: 30 };
+    } else if (roll < 0.15) {
+      return { kind: 'chonk', type: 'box', skin: ['#7986cb', '#3949ab'], size: 46 + Math.random() * 8 };
+    } else if (roll < 0.25) {
+      return { kind: 'boing', type: 'circle', skin: ['#8effa9', '#2ecc71'], size: 28 + Math.random() * 8 };
+    } else if (roll < 0.35) {
+      return { kind: 'pip', type: SHAPES[Math.floor(Math.random() * 2)], skin: SKINS[Math.floor(Math.random() * SKINS.length)], size: 17 + Math.random() * 6 };
     }
-    const normals = PROPS.filter(p => p.kind === 'normal');
-    return normals[Math.floor(Math.random() * normals.length)];
+    return { kind: 'normal', type: SHAPES[Math.floor(Math.random() * SHAPES.length)], skin: SKINS[Math.floor(Math.random() * SKINS.length)], size: 26 + Math.random() * 20 };
   }
 
   function bodyFromSpec(spec, x, y) {
@@ -244,24 +242,29 @@
       frictionStatic: 1.2,
       density: spec.kind === 'chonk' ? 0.005 : 0.002
     };
-    const im = IMG[spec.img];
-    const ratio = (im && im.naturalWidth) ? im.naturalHeight / im.naturalWidth : 0.72;
-    const dw = spec.w, dh = dw * ratio;
     let body;
-    if (spec.shape === 'circle') {
-      body = Bodies.circle(x, y, dw * 0.30, options);
+    if (spec.type === 'circle') {
+      body = Bodies.circle(x, y, spec.size / 1.7, options);
+    } else if (spec.type === 'triangle') {
+      body = Bodies.polygon(x, y, 3, spec.size / 1.4, options);
     } else {
-      body = Bodies.rectangle(x, y, dw * 0.60, dh * 0.80, options);
+      body = Bodies.rectangle(x, y, spec.size * 1.3, spec.size * 1.3, options);
     }
     body.label = 'piece';
-    body.snap = { prop: spec, kind: spec.kind, size: dw * 0.5, landed: false, squash: 0 };
+    body.snap = {
+      skin: spec.skin, type: spec.type, size: spec.size, kind: spec.kind,
+      blinkAt: performance.now() + 1200 + Math.random() * 3200,
+      blinkUntil: 0,
+      landed: false,
+      squash: 0
+    };
     return body;
   }
 
   // ---------- State ----------
   let width, height, dpr;
   let engine, world, runner;
-  let tray;
+  let tray, wallL, wallR, pivotX = 0, pivotY = 0;
   let currentBody = null;
   let nextSpec = null;
   let dropX = 0;
@@ -307,6 +310,13 @@
     canvas.style.width = width + 'px';
     canvas.style.height = height + 'px';
     makeStars();
+    // re-anchor physics: mobile viewports resize constantly (URL bar, rotation)
+    if (tray) {
+      pivotX = width / 2;
+      pivotY = height * 0.70;
+      Body.setPosition(wallL, { x: -20, y: height / 2 });
+      Body.setPosition(wallR, { x: width + 20, y: height / 2 });
+    }
   }
   window.addEventListener('resize', resize);
 
@@ -333,8 +343,11 @@
     Runner.run(runner, engine);
 
     trayWidth = Math.min(width * 0.6, 420);
-    // Dynamic seesaw tray: pinned at its center, tilts under real weight
-    tray = Bodies.rectangle(width / 2, height * 0.70, trayWidth, 26, {
+    pivotX = width / 2;
+    pivotY = height * 0.70;
+    // Dynamic seesaw tray: hard-pinned at its center every tick (rotation-only),
+    // so impacts can never knock it loose — critical on slow mobile frames
+    tray = Bodies.rectangle(pivotX, pivotY, trayWidth, 26, {
       chamfer: { radius: 6 },
       label: 'tray',
       density: 0.004,
@@ -343,21 +356,16 @@
       frictionAir: 0.06,
       restitution: 0
     });
-    const pivot = Constraint.create({
-      pointA: { x: width / 2, y: height * 0.70 },
-      bodyB: tray,
-      pointB: { x: 0, y: 0 },
-      stiffness: 1,
-      length: 0
-    });
 
-    const leftWall = Bodies.rectangle(-20, height / 2, 40, height * 2, { isStatic: true, label: 'wall' });
-    const rightWall = Bodies.rectangle(width + 20, height / 2, 40, height * 2, { isStatic: true, label: 'wall' });
+    wallL = Bodies.rectangle(-20, height / 2, 40, height * 4, { isStatic: true, label: 'wall' });
+    wallR = Bodies.rectangle(width + 20, height / 2, 40, height * 4, { isStatic: true, label: 'wall' });
 
-    World.add(world, [tray, pivot, leftWall, rightWall]);
+    World.add(world, [tray, wallL, wallR]);
 
     // Spring keeps the tray level until the stack genuinely outweighs it
     Events.on(engine, 'beforeUpdate', () => {
+      Body.setPosition(tray, { x: pivotX, y: pivotY });
+      Body.setVelocity(tray, { x: 0, y: 0 });
       const K = tray.inertia * 9e-6;   // leveling spring strength
       const MAX = 0.34;                // hard tilt limit (rad)
       tray.torque += -K * tray.angle;
@@ -419,7 +427,7 @@
         const now = performance.now();
         const impact = Math.min(Math.abs(b.velocity.y), 14);
         shake = Math.min(shake + impact * 0.7, 10);
-        burst(b.position.x, b.position.y + b.snap.size * 0.4, '#e0b070', 6 + impact);
+        burst(b.position.x, b.position.y + b.snap.size * 0.4, b.snap.skin[1], 6 + impact);
         sfx.land(impact);
 
         // combo chain
@@ -626,9 +634,10 @@
     drawTray(now);
 
     const bodies = Composite.allBodies(world);
+    const tilted = Math.abs(tray ? tray.angle : 0) > 0.12;
     for (const b of bodies) {
       if (!b.snap) continue;
-      drawProp(b, now);
+      drawSnapling(b, now, tilted);
     }
 
     for (let i = particles.length - 1; i >= 0; i--) {
@@ -716,20 +725,51 @@
 
   function drawNextPreview(now) {
     if (!running || !nextSpec) return;
-    const im = IMG[nextSpec.img];
     const px = width - 41, py = 118;
     ctx.save();
     ctx.fillStyle = 'rgba(255,255,255,0.12)';
     ctx.strokeStyle = 'rgba(255,255,255,0.3)';
     ctx.lineWidth = 2;
-    roundRect(px - 22, py - 22, 44, 44, 12);
+    roundRect(px - 21, py - 21, 42, 42, 12);
     ctx.fill(); ctx.stroke();
-    if (im && im.complete && im.naturalWidth) {
-      const r = im.naturalHeight / im.naturalWidth;
-      let dw = 34, dh = dw * r;
-      if (dh > 34) { dh = 34; dw = dh / r; }
-      ctx.drawImage(im, px - dw / 2, py - dh / 2, dw, dh);
+
+    ctx.translate(px, py);
+    const sc = 22 / nextSpec.size;
+    ctx.scale(sc, sc);
+    const grad = ctx.createLinearGradient(0, -nextSpec.size, 0, nextSpec.size);
+    grad.addColorStop(0, nextSpec.skin[0]);
+    grad.addColorStop(1, nextSpec.skin[1]);
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = 'rgba(30,10,50,0.5)';
+    ctx.lineWidth = 2.5 / sc * 0.6;
+    if (nextSpec.type === 'circle') {
+      ctx.beginPath();
+      ctx.arc(0, 0, nextSpec.size / 1.7, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+    } else if (nextSpec.type === 'triangle') {
+      const r = nextSpec.size / 1.4;
+      ctx.beginPath();
+      for (let i = 0; i < 3; i++) {
+        const a = -Math.PI / 2 + i * (Math.PI * 2 / 3);
+        i === 0 ? ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r) : ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      }
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    } else {
+      const half = nextSpec.size * 1.3 / 2;
+      roundRect(-half, -half, half * 2, half * 2, 8);
+      ctx.fill(); ctx.stroke();
     }
+    ctx.fillStyle = '#241335';
+    const es = nextSpec.size / 36;
+    ctx.beginPath(); ctx.ellipse(-7 * es, -2 * es, 3 * es, 4 * es, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(7 * es, -2 * es, 3 * es, 4 * es, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#241335';
+    ctx.lineWidth = 2 * es;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(0, 5 * es, 4.5 * es, 0.25 * Math.PI, 0.75 * Math.PI);
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -747,9 +787,7 @@
   const OUTLINE = '#241335';
   const IMG = {};
   let imgCount = 0, imgLoaded = 0;
-  ['bg', 'kid_calm', 'kid_worried', 'kid_panic', 'mom',
-   'prop_apple', 'prop_orange', 'prop_book', 'prop_car', 'prop_duck', 'prop_cake',
-   'prop_clock', 'prop_shoe', 'prop_slipper', 'prop_teddy', 'prop_football', 'prop_star'].forEach(name => {
+  ['bg', 'kid_calm', 'kid_worried', 'kid_panic', 'mom'].forEach(name => {
     imgCount++;
     const im = new Image();
     im.onload = () => imgLoaded++;
@@ -906,6 +944,74 @@
     ctx.closePath();
   }
 
+  function nearTrayEdge(b) {
+    if (!tray || b.label !== 'piece-settled') return false;
+    const w = trayWidth;
+    const dx = b.position.x - tray.position.x;
+    const dy = b.position.y - tray.position.y;
+    const cos = Math.cos(tray.angle), sin = Math.sin(tray.angle);
+    const proj = dx * cos + dy * sin;
+    return Math.abs(proj) > w / 2 - 22;
+  }
+
+  function drawSnapling(b, now, trayTilted) {
+    const s = b.snap;
+    const falling = b.label === 'piece-falling';
+    const held = b.label === 'piece';
+    const onEdge = nearTrayEdge(b);
+
+    if (s.squash > 0) s.squash = Math.max(0, s.squash - 0.06);
+    const sq = s.squash * 0.28;
+
+    ctx.save();
+    ctx.translate(b.position.x, b.position.y);
+    ctx.rotate(b.angle);
+    ctx.scale(1 + sq, 1 - sq);
+
+    ctx.fillStyle = 'rgba(0,0,0,0.18)';
+    ctx.beginPath();
+    ctx.ellipse(0, s.size * 0.52, s.size * 0.55, s.size * 0.16, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const grad = ctx.createLinearGradient(0, -s.size, 0, s.size);
+    grad.addColorStop(0, s.skin[0]);
+    grad.addColorStop(1, s.skin[1]);
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = 'rgba(30,10,50,0.5)';
+    ctx.lineWidth = 2.5;
+
+    if (s.type === 'circle') {
+      const r = s.size / 1.7;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.beginPath();
+      ctx.ellipse(-r * 0.35, -r * 0.45, r * 0.28, r * 0.16, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+      if (s.kind === 'star') {
+        for (let i = 0; i < 3; i++) {
+          const a = now * 0.003 + i * (Math.PI * 2 / 3);
+          const sx = Math.cos(a) * (r + 7), sy = Math.sin(a) * (r + 7);
+          drawSparkle(sx, sy, 3.5, 'rgba(255,235,150,0.9)');
+        }
+      }
+    } else if (s.type === 'triangle') {
+      drawWorldPoly(b, now, trayTilted, onEdge);
+      return;
+    } else {
+      const half = s.size * 1.3 / 2;
+      roundRect(-half, -half, half * 2, half * 2, 8);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      roundRect(-half + 4, -half + 4, half * 2 - 8, 8, 4);
+      ctx.fill();
+    }
+
+    drawFace(b, now, falling, held, trayTilted, 0, onEdge);
+    ctx.restore();
+  }
+
   function drawSparkle(x, y, r, color) {
     ctx.fillStyle = color;
     ctx.beginPath();
@@ -917,35 +1023,124 @@
     ctx.fill();
   }
 
-  function drawProp(b, now) {
+  function drawWorldPoly(b, now, trayTilted, onEdge) {
+    ctx.restore();
     const s = b.snap;
-    const im = IMG[s.prop.img];
-    if (!im || !im.complete || !im.naturalWidth) return;
-    if (s.squash > 0) s.squash = Math.max(0, s.squash - 0.06);
-    const sq = s.squash * 0.22;
-    const dw = s.prop.w;
-    const dh = dw * im.naturalHeight / im.naturalWidth;
+    const grad = ctx.createLinearGradient(b.position.x, b.position.y - s.size, b.position.x, b.position.y + s.size);
+    grad.addColorStop(0, s.skin[0]);
+    grad.addColorStop(1, s.skin[1]);
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = 'rgba(30,10,50,0.5)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    const vs = b.vertices;
+    ctx.moveTo(vs[0].x, vs[0].y);
+    for (let i = 1; i < vs.length; i++) ctx.lineTo(vs[i].x, vs[i].y);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
 
     ctx.save();
     ctx.translate(b.position.x, b.position.y);
     ctx.rotate(b.angle);
-    ctx.scale(1 + sq, 1 - sq);
+    const falling = b.label === 'piece-falling';
+    const held = b.label === 'piece';
+    drawFace(b, now, falling, held, trayTilted, 4, onEdge);
+    ctx.restore();
+  }
 
-    // contact shadow
-    ctx.fillStyle = 'rgba(60,30,10,0.18)';
-    ctx.beginPath();
-    ctx.ellipse(0, dh * 0.42, dw * 0.34, dh * 0.10, 0, 0, Math.PI * 2);
-    ctx.fill();
+  function drawFace(b, now, falling, held, trayTilted, yOff, onEdge) {
+    const s = b.snap;
+    const scale = s.size / 36;
+    const eyeY = -2 * scale + yOff;
+    const eyeDX = 7 * scale;
+    const worried = (trayTilted || onEdge) && b.label === 'piece-settled';
 
-    ctx.drawImage(im, -dw / 2, -dh / 2, dw, dh);
+    if (now > s.blinkAt) {
+      s.blinkUntil = now + 140;
+      s.blinkAt = now + 1600 + Math.random() * 3400;
+    }
+    const blinking = now < s.blinkUntil;
+    const look = Math.max(-2.5, Math.min(2.5, b.velocity.x * 1.2));
 
-    if (s.prop.kind === 'star') {
-      for (let i = 0; i < 3; i++) {
-        const a = now * 0.003 + i * (Math.PI * 2 / 3);
-        drawSparkle(Math.cos(a) * (dw * 0.42 + 6), Math.sin(a) * (dw * 0.42 + 6), 3.5, 'rgba(255,235,150,0.9)');
+    if (s.kind === 'chonk') {
+      ctx.strokeStyle = '#241335';
+      ctx.lineWidth = 2.6 * scale;
+      ctx.lineCap = 'round';
+      for (const dir of [-1, 1]) {
+        ctx.beginPath();
+        ctx.moveTo(dir * (eyeDX - 4 * scale), eyeY - 7 * scale);
+        ctx.lineTo(dir * (eyeDX + 4 * scale), eyeY - 8.5 * scale);
+        ctx.stroke();
       }
     }
-    ctx.restore();
+
+    ctx.fillStyle = '#241335';
+    for (const dir of [-1, 1]) {
+      const ex = dir * eyeDX;
+      if (blinking) {
+        ctx.strokeStyle = '#241335';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(ex - 4 * scale, eyeY);
+        ctx.lineTo(ex + 4 * scale, eyeY);
+        ctx.stroke();
+      } else if (falling) {
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(ex, eyeY, 5.4 * scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#241335';
+        ctx.beginPath();
+        ctx.arc(ex + look, eyeY + 1.5, 2.8 * scale, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#241335';
+        ctx.beginPath();
+        ctx.ellipse(ex + look * 0.6, eyeY, 3.2 * scale, 4.4 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.beginPath();
+        ctx.arc(ex + look * 0.6 - 1.1 * scale, eyeY - 1.4 * scale, 1.1 * scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    ctx.fillStyle = 'rgba(255,80,110,0.35)';
+    for (const dir of [-1, 1]) {
+      ctx.beginPath();
+      ctx.ellipse(dir * (eyeDX + 5.5 * scale), eyeY + 5.5 * scale, 3 * scale, 1.8 * scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const mouthY = eyeY + 8.5 * scale;
+    ctx.strokeStyle = '#241335';
+    ctx.fillStyle = '#241335';
+    ctx.lineWidth = 2.2 * scale;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    if (falling) {
+      ctx.arc(0, mouthY, 3.2 * scale, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (worried) {
+      const w = 5 * scale;
+      ctx.moveTo(-w, mouthY + Math.sin(now * 0.02) * 1.2);
+      ctx.quadraticCurveTo(0, mouthY + 3 * scale, w, mouthY + Math.sin(now * 0.02 + 2) * 1.2);
+      ctx.stroke();
+    } else {
+      ctx.arc(0, mouthY - 1.5 * scale, 4.5 * scale, 0.25 * Math.PI, 0.75 * Math.PI);
+      ctx.stroke();
+    }
+
+    if (onEdge && !falling) {
+      const wob = Math.sin(now * 0.008) * 1.5;
+      ctx.fillStyle = 'rgba(120,200,255,0.9)';
+      ctx.beginPath();
+      const sx = eyeDX + 8 * scale, sy = eyeY - 8 * scale + wob;
+      ctx.moveTo(sx, sy - 4 * scale);
+      ctx.quadraticCurveTo(sx + 4 * scale, sy + 2 * scale, sx, sy + 4 * scale);
+      ctx.quadraticCurveTo(sx - 4 * scale, sy + 2 * scale, sx, sy - 4 * scale);
+      ctx.fill();
+    }
   }
 
   // ---------- Game state ----------
