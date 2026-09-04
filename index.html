@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪵</text></svg>">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="img/icon-192.png">
+<meta name="theme-color" content="#14092b">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
 <title>Stack &amp; Snap — Help Milo balance!</title>
@@ -168,13 +171,15 @@
       </div>
     </div>
 
+    <button class="gBtn" id="installBtn" style="display:none; margin-top:10px;">📲 Install app</button>
+
     <section class="board">
       <h2>🏆 LEADERBOARD</h2>
       <ol id="rows"></ol>
       <div class="boardNote" id="boardNote"></div>
     </section>
   </div>
-  <footer>Made with ❤ — works on any phone or computer · v2.4</footer>
+  <footer>Made with ❤ — works on any phone or computer · v2.6</footer>
 </main>
 
 <script>
@@ -462,6 +467,24 @@ if (!configured) {
     }
   }
 }
+</script>
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+let deferredInstall = null;
+const installBtn = document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstall = e;
+  installBtn.style.display = 'inline-flex';
+});
+installBtn.addEventListener('click', async () => {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  await deferredInstall.userChoice;
+  deferredInstall = null;
+  installBtn.style.display = 'none';
+});
+window.addEventListener('appinstalled', () => { installBtn.style.display = 'none'; });
 </script>
 </body>
 </html>

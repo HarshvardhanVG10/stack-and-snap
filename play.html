@@ -4,7 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🪵</text></svg>">
-<link rel="apple-touch-icon" href="data:,">
+<link rel="apple-touch-icon" href="img/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#14092b">
 <title>Play — Stack &amp; Snap</title>
 <style>
   html, body {
@@ -135,7 +137,7 @@
   </div>
 </div>
 <div id="tip">Move to aim &middot; tap to drop &middot; land fast for combos</div>
-<div id="ver">v2.5</div>
+<div id="ver">v2.6</div>
 <div id="overlay">
   <div id="mascotRow">
     <div class="mascot" style="background:linear-gradient(180deg,#ff8a80,#ff5252)"><div class="smile"></div></div>
@@ -1308,6 +1310,8 @@
   playBtn.addEventListener('click', startGame);
   resize();
   draw();
+  // the homepage is the menu — start playing immediately
+  startGame();
 })();
 </script>
 <script type="module">
@@ -1346,5 +1350,6 @@ if (configured) {
   };
 }
 </script>
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 </body>
 </html>

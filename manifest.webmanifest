@@ -1,0 +1,16 @@
+{
+  "name": "Stack & Snap",
+  "short_name": "Stack&Snap",
+  "description": "Help Milo balance the plank — stack the Snaplings, chain combos, don't let them tumble!",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14092b",
+  "theme_color": "#14092b",
+  "icons": [
+    { "src": "img/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "img/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "img/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
