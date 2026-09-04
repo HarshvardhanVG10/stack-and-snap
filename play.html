@@ -247,9 +247,9 @@
 
   function bodyFromSpec(spec, x, y) {
     const options = {
-      restitution: spec.kind === 'boing' ? 0.55 : 0.03,
-      friction: 1.5,          // Matter uses min(friction) of the pair — keep both high
-      frictionStatic: 3,
+      restitution: spec.kind === 'boing' ? 0.55 : 0.01,
+      friction: 2.2,          // Matter uses min(friction) of the pair — keep both high
+      frictionStatic: 8,
       density: spec.kind === 'chonk' ? 0.005 : 0.002
     };
     let body;
@@ -363,8 +363,8 @@
       chamfer: { radius: 6 },
       label: 'tray',
       density: 0.007,          // heavier plank: slower, smoother swings
-      friction: 1.5,           // grippy wood — objects shouldn't skate off
-      frictionStatic: 3,
+      friction: 2.2,           // grippy wood — objects shouldn't skate off
+      frictionStatic: 8,
       frictionAir: 0.10,       // more damping: less jitter
       restitution: 0
     });
@@ -379,9 +379,9 @@
     Events.on(engine, 'beforeUpdate', () => {
       Body.setPosition(tray, { x: pivotX, y: pivotY });
       Body.setVelocity(tray, { x: 0, y: 0 });
-      const K = tray.inertia * 1.1e-5;      // leveling spring strength
+      const K = tray.inertia * 1.3e-5;      // leveling spring strength
       const D = tray.inertia * 1.6e-3;      // velocity damping: smooth, no wobble-jitter
-      const SOFT = 0.26, MAX = 0.38;        // progressive soft stop, then hard safety
+      const SOFT = 0.19, MAX = 0.28;        // gentler max slope so objects don't skate off
       tray.torque += -K * tray.angle - D * tray.angularVelocity;
       const over = Math.abs(tray.angle) - SOFT;
       if (over > 0) tray.torque += -Math.sign(tray.angle) * K * over * 14;
@@ -523,11 +523,6 @@
     // a gust of wind nudges the seesaw instead of teleporting it
     const kick = (Math.random() - 0.5) * (0.022 + level * 0.005);
     Body.setAngularVelocity(tray, tray.angularVelocity + kick);
-    const newW = Math.max(140, trayWidth * 0.94);
-    if (newW < trayWidth) {
-      Body.scale(tray, newW / trayWidth, 1);
-      trayWidth = newW;
-    }
     shake = Math.min(shake + 4, 10);
     sfx.tilt();
   }
@@ -695,7 +690,7 @@
 
   function drawBalanceMeter(now) {
     if (!running || !tray) return;
-    const MAX = 0.38;
+    const MAX = 0.28;
     const t = Math.max(-MAX, Math.min(MAX, tray.angle));
     const mh = Math.min(170, height * 0.24);
     const mx = 14, my = height * 0.42 - mh / 2;
