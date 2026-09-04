@@ -1,11 +1,9 @@
-// Paste your Firebase web-app config here — see SETUP-FIREBASE.md for the
-// 5-minute setup. Until then the game works fully; sign-in and the online
-// leaderboard simply stay in "coming soon" mode.
+// Firebase web-app config (public by design — security lives in Firestore rules).
 export const firebaseConfig = {
-  apiKey: "PASTE_YOUR_API_KEY",
-  authDomain: "PASTE_PROJECT.firebaseapp.com",
-  projectId: "PASTE_PROJECT_ID",
-  storageBucket: "PASTE_PROJECT.appspot.com",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId: "PASTE_APP_ID"
+  apiKey: "AIzaSyAoD17RUCMbO2L-icW-PQLsxf-epPSUV0M",
+  authDomain: "stack-and-snap.firebaseapp.com",
+  projectId: "stack-and-snap",
+  storageBucket: "stack-and-snap.firebasestorage.app",
+  messagingSenderId: "287027838026",
+  appId: "1:287027838026:web:36b356bca272abd3c0fab3"
 };
