@@ -135,7 +135,7 @@
   </div>
 </div>
 <div id="tip">Move to aim &middot; tap to drop &middot; land fast for combos</div>
-<div id="ver">v2.4</div>
+<div id="ver">v2.5</div>
 <div id="overlay">
   <div id="mascotRow">
     <div class="mascot" style="background:linear-gradient(180deg,#ff8a80,#ff5252)"><div class="smile"></div></div>
@@ -297,8 +297,8 @@
   let momText = '', momUntil = 0, nextAmbient = 0;
 
   // grace-period slide mechanic: sustained tilt -> warning window -> slow creep
-  const SLIDE_TILT = 0.11;    // lean (rad) that starts the countdown
-  const GRACE_MS = 4500;      // time the player has to counterbalance
+  const SLIDE_TILT = 0.16;    // only a near-maximum lean starts the countdown
+  const GRACE_MS = 6000;      // generous time to counterbalance
   let tiltHoldMs = 0, slideRamp = 0, slideWarned = false, lastLoopNow = 0;
 
   const MOM_LINES = {
@@ -394,9 +394,9 @@
       // rolling resistance: slow, settled pieces stop rolling downhill so a
       // counterweight dropped on the high side actually stays there
       for (const p of Composite.allBodies(world)) {
-        if (p.label === 'piece-settled' && p.speed < 1.2) {
-          Body.setAngularVelocity(p, p.angularVelocity * 0.85);
-        }
+        if (p.label !== 'piece-settled' || p.speed > 2) continue;
+        Body.setAngularVelocity(p, p.angularVelocity * 0.8);
+        Body.setVelocity(p, { x: p.velocity.x * 0.88, y: p.velocity.y });
       }
       const over = Math.abs(tray.angle) - SOFT;
       if (over > 0) tray.torque += -Math.sign(tray.angle) * K * over * 14;
@@ -453,6 +453,10 @@
         b.label = 'piece-settled';
         b.snap.landed = true;
         b.snap.squash = 1;
+        // sticky landing: kill sideways skid and spin so pieces plant where
+        // they touch — makes stacking piece-on-piece (pyramids!) possible
+        Body.setVelocity(b, { x: b.velocity.x * 0.12, y: b.velocity.y * 0.5 });
+        Body.setAngularVelocity(b, b.angularVelocity * 0.15);
         piecesLanded++;
 
         const now = performance.now();
@@ -591,7 +595,7 @@
     } else {
       tiltHoldMs = Math.max(0, tiltHoldMs - dt * 2);
     }
-    slideRamp = Math.max(0, Math.min(1, (tiltHoldMs - GRACE_MS) / 3000));
+    slideRamp = Math.max(0, Math.min(1, (tiltHoldMs - GRACE_MS) / 4000));
     if (slideRamp > 0 && !slideWarned) {
       slideWarned = true;
       popups.push({ x: width / 2, y: height * 0.42, text: 'SLIPPING!', life: 1.5, color: '#ff6b6b', big: true });
@@ -603,7 +607,7 @@
       // slow creep downhill, accelerating the longer the imbalance lasts
       const dir = Math.sign(a);
       const tx = Math.cos(a) * dir, ty = Math.sin(a) * dir;
-      const step = 0.22 * slideRamp;
+      const step = 0.12 * slideRamp;
       for (const p of Composite.allBodies(world)) {
         if (p.label !== 'piece-settled' || p.speed > 1.5) continue;
         Body.translate(p, { x: tx * step, y: ty * step });
