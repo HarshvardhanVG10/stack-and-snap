@@ -294,6 +294,11 @@
   let lives = 3, level = 1;
   let momText = '', momUntil = 0, nextAmbient = 0;
 
+  // grace-period slide mechanic: sustained tilt -> warning window -> slow creep
+  const SLIDE_TILT = 0.08;    // lean (rad) that starts the countdown
+  const GRACE_MS = 3000;      // time the player has to counterbalance
+  let tiltHoldMs = 0, slideRamp = 0, slideWarned = false, lastLoopNow = 0;
+
   const MOM_LINES = {
     calm: ["You've got this, Milo!", "Steady now...", "Looking good!", "My careful boy!"],
     worry: ["Careful, sweetie!", "Watch that side!", "Hmm... easy now!", "Oh dear..."],
@@ -365,7 +370,7 @@
       density: 0.007,          // heavier plank: slower, smoother swings
       friction: 2.2,           // grippy wood — objects shouldn't skate off
       frictionStatic: 8,
-      frictionAir: 0.10,       // more damping: less jitter
+      frictionAir: 0.03,       // light damping: lean can actually develop
       restitution: 0
     });
 
@@ -374,15 +379,23 @@
 
     World.add(world, [tray, wallL, wallR]);
     window.__tiltDebug = () => (tray ? tray.angle : null);
+    window.__slideDebug = () => ({ hold: Math.round(tiltHoldMs), ramp: +slideRamp.toFixed(2), lives: lives });
 
     // Spring keeps the tray level until the stack genuinely outweighs it
     Events.on(engine, 'beforeUpdate', () => {
       Body.setPosition(tray, { x: pivotX, y: pivotY });
       Body.setVelocity(tray, { x: 0, y: 0 });
-      const K = tray.inertia * 1.3e-5;      // leveling spring strength
-      const D = tray.inertia * 1.6e-3;      // velocity damping: smooth, no wobble-jitter
-      const SOFT = 0.19, MAX = 0.28;        // gentler max slope so objects don't skate off
+      const K = tray.inertia * 1e-6;        // weak spring: weight genuinely leans the plank
+      const D = tray.inertia * 7e-4;        // moderate damping: smooth but responsive lean
+      const SOFT = 0.22, MAX = 0.30;        // soft stop, then hard safety
       tray.torque += -K * tray.angle - D * tray.angularVelocity;
+      // rolling resistance: slow, settled pieces stop rolling downhill so a
+      // counterweight dropped on the high side actually stays there
+      for (const p of Composite.allBodies(world)) {
+        if (p.label === 'piece-settled' && p.speed < 1.2) {
+          Body.setAngularVelocity(p, p.angularVelocity * 0.85);
+        }
+      }
       const over = Math.abs(tray.angle) - SOFT;
       if (over > 0) tray.torque += -Math.sign(tray.angle) * K * over * 14;
       if (tray.angle > MAX) { Body.setAngle(tray, MAX); if (tray.angularVelocity > 0) Body.setAngularVelocity(tray, 0); }
@@ -565,7 +578,35 @@
   function gameLoop() {
     if (!running) return;
     const now = performance.now();
+    const dt = lastLoopNow ? Math.min(50, now - lastLoopNow) : 16;
+    lastLoopNow = now;
     tiltTray(now);
+
+    // sustained lean starts the slide countdown; counterbalancing unwinds it
+    const a = tray.angle;
+    if (Math.abs(a) > SLIDE_TILT) {
+      tiltHoldMs += dt;
+    } else {
+      tiltHoldMs = Math.max(0, tiltHoldMs - dt * 2);
+    }
+    slideRamp = Math.max(0, Math.min(1, (tiltHoldMs - GRACE_MS) / 2000));
+    if (slideRamp > 0 && !slideWarned) {
+      slideWarned = true;
+      popups.push({ x: width / 2, y: height * 0.42, text: 'SLIPPING!', life: 1.5, color: '#ff6b6b', big: true });
+      sfx.tilt();
+      momSay('panic');
+    }
+    if (slideRamp === 0) slideWarned = false;
+    if (slideRamp > 0) {
+      // slow creep downhill, accelerating the longer the imbalance lasts
+      const dir = Math.sign(a);
+      const tx = Math.cos(a) * dir, ty = Math.sin(a) * dir;
+      const step = 0.45 * slideRamp;
+      for (const p of Composite.allBodies(world)) {
+        if (p.label !== 'piece-settled' || p.speed > 1.5) continue;
+        Body.translate(p, { x: tx * step, y: ty * step });
+      }
+    }
 
     // combo window expiry indicator
     if (combo > 1 && now - lastLandTime > 1600) {
@@ -690,7 +731,7 @@
 
   function drawBalanceMeter(now) {
     if (!running || !tray) return;
-    const MAX = 0.28;
+    const MAX = 0.30;
     const t = Math.max(-MAX, Math.min(MAX, tray.angle));
     const mh = Math.min(170, height * 0.24);
     const mx = 14, my = height * 0.42 - mh / 2;
@@ -1238,6 +1279,7 @@
     score = 0; bonusScore = 0;
     combo = 0; maxCombo = 0;
     piecesLanded = 0;
+    tiltHoldMs = 0; slideRamp = 0; slideWarned = false; lastLoopNow = 0;
     lives = 3; level = 1;
     updateLives();
     momText = ''; momUntil = 0;
