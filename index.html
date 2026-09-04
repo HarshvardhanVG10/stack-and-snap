@@ -174,7 +174,7 @@
       <div class="boardNote" id="boardNote"></div>
     </section>
   </div>
-  <footer>Made with ❤ — works on any phone or computer</footer>
+  <footer>Made with ❤ — works on any phone or computer · v2.4</footer>
 </main>
 
 <script>
@@ -198,7 +198,7 @@
     canvas.width = W * dpr; canvas.height = H * dpr;
     canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
   }
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', () => { resize(); seedFallers(); });
   resize();
 
   function makeFaller(fresh) {
@@ -210,14 +210,19 @@
       swaySp: 0.4 + Math.random() * 0.8,
       rot: Math.random() * Math.PI * 2,
       vr: (Math.random() - 0.5) * 0.012,
-      size: 16 + Math.random() * 22,
+      size: 20 + Math.random() * 26,
       skin: SKINS[Math.floor(Math.random() * SKINS.length)],
       type: TYPES[Math.floor(Math.random() * TYPES.length)],
       blinkAt: performance.now() + Math.random() * 4000, blinkUntil: 0
     };
   }
   const fallers = [];
-  for (let i = 0; i < 13; i++) fallers.push(makeFaller(false));
+  function seedFallers() {
+    fallers.length = 0;
+    const n = Math.max(14, Math.min(40, Math.round(W * H / 55000)));
+    for (let i = 0; i < n; i++) fallers.push(makeFaller(false));
+  }
+  seedFallers();
 
   function roundRect(x, y, w, h, r) {
     ctx.beginPath();
@@ -355,7 +360,7 @@
       f.x += Math.sin(now * 0.001 * f.swaySp + f.sway) * 0.4;
       f.rot += f.vr;
       if (f.y > H + 50) fallers[i] = makeFaller(true);
-      drawSnap(f, now, 0.5);
+      drawSnap(f, now, 0.7);
     }
     drawHero(now);
   }

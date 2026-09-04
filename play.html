@@ -59,6 +59,7 @@
     animation: tipPulse 2.4s ease-in-out infinite;
   }
   @keyframes tipPulse { 0%,100% { opacity: .45; } 50% { opacity: .9; } }
+  #ver { position: fixed; bottom: 6px; right: 10px; font-size: 10px; color: rgba(255,255,255,0.4); pointer-events: none; }
   #overlay {
     position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
     flex-direction: column; background: rgba(12,4,30,0.78); color: #fff; text-align: center;
@@ -134,6 +135,7 @@
   </div>
 </div>
 <div id="tip">Move to aim &middot; tap to drop &middot; land fast for combos</div>
+<div id="ver">v2.4</div>
 <div id="overlay">
   <div id="mascotRow">
     <div class="mascot" style="background:linear-gradient(180deg,#ff8a80,#ff5252)"><div class="smile"></div></div>
@@ -295,8 +297,8 @@
   let momText = '', momUntil = 0, nextAmbient = 0;
 
   // grace-period slide mechanic: sustained tilt -> warning window -> slow creep
-  const SLIDE_TILT = 0.08;    // lean (rad) that starts the countdown
-  const GRACE_MS = 3000;      // time the player has to counterbalance
+  const SLIDE_TILT = 0.11;    // lean (rad) that starts the countdown
+  const GRACE_MS = 4500;      // time the player has to counterbalance
   let tiltHoldMs = 0, slideRamp = 0, slideWarned = false, lastLoopNow = 0;
 
   const MOM_LINES = {
@@ -387,7 +389,7 @@
       Body.setVelocity(tray, { x: 0, y: 0 });
       const K = tray.inertia * 1e-6;        // weak spring: weight genuinely leans the plank
       const D = tray.inertia * 7e-4;        // moderate damping: smooth but responsive lean
-      const SOFT = 0.22, MAX = 0.30;        // soft stop, then hard safety
+      const SOFT = 0.19, MAX = 0.26;        // soft stop, then hard safety
       tray.torque += -K * tray.angle - D * tray.angularVelocity;
       // rolling resistance: slow, settled pieces stop rolling downhill so a
       // counterweight dropped on the high side actually stays there
@@ -589,7 +591,7 @@
     } else {
       tiltHoldMs = Math.max(0, tiltHoldMs - dt * 2);
     }
-    slideRamp = Math.max(0, Math.min(1, (tiltHoldMs - GRACE_MS) / 2000));
+    slideRamp = Math.max(0, Math.min(1, (tiltHoldMs - GRACE_MS) / 3000));
     if (slideRamp > 0 && !slideWarned) {
       slideWarned = true;
       popups.push({ x: width / 2, y: height * 0.42, text: 'SLIPPING!', life: 1.5, color: '#ff6b6b', big: true });
@@ -601,7 +603,7 @@
       // slow creep downhill, accelerating the longer the imbalance lasts
       const dir = Math.sign(a);
       const tx = Math.cos(a) * dir, ty = Math.sin(a) * dir;
-      const step = 0.45 * slideRamp;
+      const step = 0.22 * slideRamp;
       for (const p of Composite.allBodies(world)) {
         if (p.label !== 'piece-settled' || p.speed > 1.5) continue;
         Body.translate(p, { x: tx * step, y: ty * step });
@@ -731,7 +733,7 @@
 
   function drawBalanceMeter(now) {
     if (!running || !tray) return;
-    const MAX = 0.30;
+    const MAX = 0.26;
     const t = Math.max(-MAX, Math.min(MAX, tray.angle));
     const mh = Math.min(170, height * 0.24);
     const mx = 14, my = height * 0.42 - mh / 2;
