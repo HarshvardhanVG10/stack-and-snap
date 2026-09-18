@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "287027838026",
+    "project_id": "stack-and-snap",
+    "storage_bucket": "stack-and-snap.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:287027838026:android:fb0c597f37fafbb4c0fab3",
+        "android_client_info": {
+          "package_name": "io.github.hvg10.stackandsnap"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "287027838026-h618pkboeqp78t34njdilg5f0s5d7jca.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "io.github.hvg10.stackandsnap",
+            "certificate_hash": "ccb7681a7148c1e12629e2b8483d2a53b08c9a87"
+          }
+        },
+        {
+          "client_id": "287027838026-nclbl9ovgdlucg587680c6immngnprb0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "io.github.hvg10.stackandsnap",
+            "certificate_hash": "c99f44873715b638a9806a59831b37fee44bddea"
+          }
+        },
+        {
+          "client_id": "287027838026-njnqml0ltlrd9pqopiugsb6mfg698sd3.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgMdWRgBIXkH3jjX35IjHwKT1A_gsCQfo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "287027838026-njnqml0ltlrd9pqopiugsb6mfg698sd3.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
