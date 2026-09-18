@@ -41,6 +41,11 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Ensure Android SDK platform 36 is installed
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
 
