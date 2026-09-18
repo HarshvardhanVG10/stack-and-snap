@@ -27,7 +27,7 @@ jobs:
 
       - name: Install Android SDK command-line tools
         env:
-          ANDROID_SDK_ROOT: /usr/local/lib/android-sdk
+          ANDROID_SDK_ROOT: /home/runner/android-sdk
         run: |
           mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
           curl -fsSL -o /tmp/cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
