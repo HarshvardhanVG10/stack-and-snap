@@ -411,11 +411,26 @@ if (!configured) {
   const db = getFirestore(app);
   let me = null;
 
+  // Google blocks its own OAuth sign-in inside an embedded app WebView, so the
+  // packaged Android app uses native sign-in (Capacitor plugin) instead of the
+  // browser popup. With skipNativeAuth:false the plugin also signs the result
+  // into this same Firebase Auth instance, so onAuthStateChanged below and the
+  // rest of the leaderboard code need no changes either way.
+  const isNativeApp = typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform && Capacitor.isNativePlatform();
+
   loginBtn.addEventListener('click', async () => {
-    try { await signInWithPopup(auth, new GoogleAuthProvider()); }
-    catch (e) { boardNote.textContent = 'Sign-in failed: ' + e.message; }
+    try {
+      if (isNativeApp) {
+        await Capacitor.Plugins.FirebaseAuthentication.signInWithGoogle();
+      } else {
+        await signInWithPopup(auth, new GoogleAuthProvider());
+      }
+    } catch (e) { boardNote.textContent = 'Sign-in failed: ' + e.message; }
   });
-  logoutBtn.addEventListener('click', () => signOut(auth));
+  logoutBtn.addEventListener('click', async () => {
+    if (isNativeApp) await Capacitor.Plugins.FirebaseAuthentication.signOut();
+    await signOut(auth);
+  });
 
   onAuthStateChanged(auth, async (user) => {
     me = user;

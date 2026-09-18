@@ -1,0 +1,19 @@
+{
+  "appId": "io.github.hvg10.stackandsnap",
+  "appName": "Stack & Snap",
+  "webDir": "www",
+  "server": {
+    "url": "https://harshvardhanvg10.github.io/stack-and-snap/",
+    "androidScheme": "https",
+    "cleartext": false
+  },
+  "android": {
+    "backgroundColor": "#14092b"
+  },
+  "plugins": {
+    "FirebaseAuthentication": {
+      "providers": ["google.com"],
+      "skipNativeAuth": false
+    }
+  }
+}
